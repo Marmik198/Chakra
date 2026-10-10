@@ -34,14 +34,14 @@ export default function Trackers({section,title,sub,example='e.g. Days not eaten
   <Pane id={tid} name="Add new"><Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:1.5}}>Add a new tracker</Typography><Stack direction="row" spacing={2} useFlexGap flexWrap="wrap">
    <TextField label={example} value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&add()} sx={{flex:1,minWidth:200}}/>
    <Button variant="contained" onClick={add}>Add</Button></Stack>
-   <ToggleButtonGroup exclusive size="small" value={kind} onChange={(_,v)=>v&&setKind(v)} sx={{mt:2}} aria-label="Tracker type"><ToggleButton value="counter">With counter</ToggleButton><ToggleButton value="simple">Did or slipped only</ToggleButton></ToggleButtonGroup>
+   <ToggleButtonGroup exclusive size="small" value={kind} onChange={(_,v)=>v&&setKind(v)} sx={{mt:2}} aria-label="Tracker type"><ToggleButton value="counter">Counted Streaks</ToggleButton><ToggleButton value="simple">Clean Streaks only</ToggleButton></ToggleButtonGroup>
    <Typography variant="body2" color="text.secondary" sx={{mt:1}}>{kind==='counter'?'Check in or slip, and also count how many times each day.':'Just record whether you did it or slipped. No counter.'}</Typography></Card></Pane>
   <Pane id={tid} not name={['Add new',...(extraTab?[extraTab]:[])]}><Box sx={{display:'grid',gap:2,gridTemplateColumns:'repeat(auto-fill,minmax(330px,1fr))'}}>{rows.map(s=>{
    const simple=s.kind==='simple',st=stats(s.streak_days,T),td=st.map.get(T),status=td?.status,cnt=td?.count||0,cur=st.current,nx=MS.find(m=>m>cur)||cur+1,pv=[0,...MS].filter(m=>m<=cur).pop();
    const log=[...(s.streak_days||[])].filter(x=>x.note||x.status==='slip').sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
    const setCount=n=>n<=0?clear(s,T):put(s,T,{status:status||'clean',count:n,note:td?.note||null});
    return <Card key={s.id} sx={{p:2.5}}>
-    <Box sx={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><Box sx={{display:'flex',alignItems:'center',gap:1,flexWrap:'wrap'}}><Typography variant="h6">{s.name}</Typography><Chip size="small" variant="outlined" label={simple?'Did or slipped':'With counter'}/></Box><IconButton size="small" aria-label="Delete tracker" onClick={()=>del(s)}><DeleteRounded fontSize="small"/></IconButton></Box>
+    <Box sx={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><Box sx={{display:'flex',alignItems:'center',gap:1,flexWrap:'wrap'}}><Typography variant="h6">{s.name}</Typography><Chip size="small" variant="outlined" label={simple?'Clean Streaks':'Counted Streaks'}/></Box><IconButton size="small" aria-label="Delete tracker" onClick={()=>del(s)}><DeleteRounded fontSize="small"/></IconButton></Box>
     <Pane id={tid} name="Trackers">
      <Box sx={{display:'flex',alignItems:'center',gap:1,my:1,color:cur?'warning.main':'text.secondary'}}><LocalFireDepartmentRounded sx={{fontSize:40}}/><Typography variant="h3">{cur}</Typography><Typography color="text.secondary">day streak</Typography></Box>
      <LinearProgress variant="determinate" color="secondary" value={(cur-pv)/(nx-pv)*100} sx={{height:8,borderRadius:4}}/>
