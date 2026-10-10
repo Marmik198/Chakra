@@ -1,0 +1,2 @@
+export const dynamic='force-static';
+export default function manifest(){return{name:'Chakra',short_name:'Chakra',description:'Your habits, health, money and goals in one place',start_url:'/',display:'standalone',background_color:'#F3F4F1',theme_color:'#6A4DF4',icons:[{src:'/icon.svg',sizes:'any',type:'image/svg+xml'},{src:'/icon-192.png',sizes:'192x192',type:'image/png'},{src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'any'}]}}

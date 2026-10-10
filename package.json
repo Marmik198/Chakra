@@ -1,0 +1,45 @@
+{
+ "name": "chakra",
+ "version": "0.1.0",
+ "private": true,
+ "scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "mobile:export": "cross-env MOBILE=1 next build",
+  "mobile:add": "npm run mobile:export && cap add android && node scripts/patch-android.mjs",
+  "mobile:sync": "npm run mobile:export && cap sync android",
+  "mobile:open": "cap open android",
+  "mobile:run": "cap run android",
+  "assets": "capacitor-assets generate --android",
+  "analyze": "cross-env ANALYZE=true next build"
+ },
+ "dependencies": {
+  "next": "14.2.15",
+  "react": "^18.3.1",
+  "react-dom": "^18.3.1",
+  "@mui/material": "^5.16.7",
+  "@mui/icons-material": "^5.16.7",
+  "@mui/x-charts": "^7.18.0",
+  "@mui/material-nextjs": "^5.16.6",
+  "@emotion/react": "^11.13.3",
+  "@emotion/styled": "^11.13.0",
+  "@emotion/cache": "^11.13.1",
+  "@supabase/supabase-js": "^2.45.4",
+  "@capacitor/core": "latest",
+  "@capacitor/android": "latest",
+  "@capacitor/local-notifications": "latest",
+  "@capacitor/app": "latest",
+  "@capgo/capacitor-native-biometric": "latest",
+  "jspdf": "^2.5.2",
+  "jspdf-autotable": "^3.8.4",
+  "@capacitor/filesystem": "latest",
+  "@capacitor/share": "latest"
+ },
+ "devDependencies": {
+  "@capacitor/cli": "latest",
+  "@capacitor/assets": "latest",
+  "cross-env": "^7.0.3",
+  "@next/bundle-analyzer": "^14.2.15"
+ }
+}
