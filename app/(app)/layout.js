@@ -6,6 +6,7 @@ import {usePathname,useRouter} from 'next/navigation';
 import {alpha,Box,Drawer,List,ListSubheader,ListItemButton,ListItemIcon,ListItemText,AppBar,Toolbar,Typography,Paper,BottomNavigation,BottomNavigationAction,ButtonBase} from '@mui/material';
 import TodayRounded from '@mui/icons-material/TodayRounded';
 import ScheduleRounded from '@mui/icons-material/ScheduleRounded';
+import WorkRounded from '@mui/icons-material/WorkRounded';
 import ChecklistRounded from '@mui/icons-material/ChecklistRounded';
 import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded';
 import MonitorHeartRounded from '@mui/icons-material/MonitorHeartRounded';
@@ -31,11 +32,11 @@ const QuickAdd=dynamic(()=>import('@/components/QuickAdd'),{ssr:false});
 const Reminders=dynamic(()=>import('@/components/Reminders'),{ssr:false});
 const Native=dynamic(()=>import('@/components/Native'),{ssr:false});
 const LockToggle=dynamic(()=>import('@/components/Native').then(m=>m.LockToggle),{ssr:false});
-const GROUPS=[['Plan',[['/','Today',TodayRounded],['/schedule','Schedule',ScheduleRounded],['/tasks','Tasks',ChecklistRounded],['/streaks','Streaks',LocalFireDepartmentRounded],['/goals','Goals',FlagRounded]]],
+const GROUPS=[['Plan',[['/','Today',TodayRounded],['/schedule','Schedule',ScheduleRounded],['/tasks','Tasks',ChecklistRounded],['/office','Office',WorkRounded],['/streaks','Streaks',LocalFireDepartmentRounded],['/goals','Goals',FlagRounded]]],
  ['Body',[['/fitness','Fitness',FitnessCenterRounded],['/health','Health',MonitorHeartRounded],['/sleep','Sleep',BedtimeRounded],['/food','Food',RestaurantRounded]]],
  ['Money',[['/money','Money',AccountBalanceWalletRounded],['/reports','Reports',AssessmentRounded],['/investments','Invest',TrendingUpRounded]]],
  ['Life',[['/spiritual','Spiritual',SelfImprovementRounded],['/journal','Journal',EditNoteRounded],['/leisure','Leisure',MovieRounded],['/outings','Outings',LuggageRounded],['/tech','Tech',CodeRounded],['/notes','Notes',StickyNote2Rounded]]]];
-const ACC={Today:'#14B8A6',Schedule:'#10B981',Tasks:'#3B82F6',Streaks:'#F59E0B',Goals:'#8B5CF6',Fitness:'#F97316',Health:'#EF4467',Sleep:'#6D8EF5',Food:'#22C55E',Money:'#0EA5E9',Reports:'#38BDF8',Invest:'#6366F1',Spiritual:'#E879A8',Journal:'#64748B',Leisure:'#A78BFA',Outings:'#06B6D4',Tech:'#84CC16',Notes:'#EAB308'};
+const ACC={Today:'#14B8A6',Schedule:'#10B981',Tasks:'#3B82F6',Office:'#D946EF',Streaks:'#F59E0B',Goals:'#8B5CF6',Fitness:'#F97316',Health:'#EF4467',Sleep:'#6D8EF5',Food:'#22C55E',Money:'#0EA5E9',Reports:'#38BDF8',Invest:'#6366F1',Spiritual:'#E879A8',Journal:'#64748B',Leisure:'#A78BFA',Outings:'#06B6D4',Tech:'#84CC16',Notes:'#EAB308'};
 const FLAT=Object.fromEntries(GROUPS.flatMap(g=>g[1]).map(i=>[i[1],i])),BOT=['Today','Tasks','Fitness','Money'].map(n=>FLAT[n]),W=212;
 // Thin scrollbar in the theme colours: a soft violet-to-rose thumb that brightens on hover.
 const scrollSx={flex:1,overflowY:'auto',overflowX:'hidden',scrollbarWidth:'thin',scrollbarColor:'rgba(139,124,248,.55) transparent','&::-webkit-scrollbar':{width:6},'&::-webkit-scrollbar-track':{background:'transparent'},'&::-webkit-scrollbar-thumb':{borderRadius:8,background:'linear-gradient(180deg,rgba(106,77,244,.5),rgba(229,69,127,.5))'},'&:hover::-webkit-scrollbar-thumb':{background:'linear-gradient(180deg,#6A4DF4,#E5457F)'}};
