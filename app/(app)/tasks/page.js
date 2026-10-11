@@ -3,6 +3,7 @@ import {useEffect,useState,useCallback,useMemo} from 'react';
 import {Card,Typography,Tabs,Tab,TextField,Button,Select,MenuItem,ToggleButton,ToggleButtonGroup,FormControlLabel,Switch,Checkbox,IconButton,Stack,Box,Chip,Dialog,DialogTitle,DialogContent,DialogActions,Table,TableBody,TableCell,TableHead,TableRow} from '@mui/material';
 import DeleteRounded from '@mui/icons-material/DeleteRounded';
 import AddRounded from '@mui/icons-material/AddRounded';
+import SettingsRounded from '@mui/icons-material/SettingsRounded';
 import {rescheduleSoon} from '@/lib/native';
 import {TabBar,Pane} from '@/components/Tabs';
 import {supabase} from '@/lib/supabase';
@@ -12,19 +13,21 @@ const WD=['Su','Mo','Tu','We','Th','Fr','Sa'],CY={daily:'Daily',interval:'Every 
 const blank={start_date:iso(new Date()),title:'',cycle:'daily',interval_n:2,weekdays:[],month_day:1,remind_time:'',remind:false};
 export default function Tasks(){
  const D=useMemo(()=>lastDays(14),[]),T=D[13];
- const [lists,setLists]=useState([]),[tasks,setTasks]=useState([]),[log,setLog]=useState({}),[cur,setCur]=useState(0),[nl,setNl]=useState(''),[f,setF]=useState(blank),[sel,setSel]=useState(null),[openL,setOpenL]=useState(false);
+ const [lists,setLists]=useState([]),[tasks,setTasks]=useState([]),[log,setLog]=useState({}),[cur,setCur]=useState(0),[nl,setNl]=useState(''),[f,setF]=useState(blank),[sel,setSel]=useState(null),[openL,setOpenL]=useState(false),[ed,setEd]=useState({}),[cfm,setCfm]=useState(null);
  const load=useCallback(async()=>{
   const[a,b,c]=await Promise.all([supabase.from('task_lists').select('*').order('created_at'),supabase.from('tasks').select('*').order('created_at'),supabase.from('task_log').select('task_id,date').gte('date',D[0])]);
   setLists(a.data||[]);setTasks(b.data||[]);const m={};(c.data||[]).forEach(r=>m[r.task_id+r.date]=1);setLog(m);rescheduleSoon()},[D]);
  useEffect(()=>{load()},[load]);
  const L=lists[cur],mine=tasks.filter(t=>L&&t.list_id===L.id),set=(k,v)=>setF(p=>({...p,[k]:v}));
- const addList=async()=>{if(!nl.trim())return;await supabase.from('task_lists').insert({name:nl.trim()});setNl('');setOpenL(false);await load();setCur(lists.length)};
+ const addList=async()=>{if(!nl.trim())return;await supabase.from('task_lists').insert({name:nl.trim()});setNl('');await load();setCur(lists.length)};
+ const rename=async l=>{const n=(ed[l.id]??l.name).trim();setEd(({[l.id]:_,...r})=>r);if(!n||n===l.name)return;await supabase.from('task_lists').update({name:n}).eq('id',l.id);load()};
+ const delList=async l=>{setCfm(null);await supabase.from('task_lists').delete().eq('id',l.id);setCur(0);load()};
  const addTask=async()=>{if(!f.title.trim()||!L)return;await supabase.from('tasks').insert({list_id:L.id,title:f.title.trim(),cycle:f.cycle,start_date:f.start_date||iso(new Date()),interval_n:+f.interval_n||1,weekdays:f.weekdays.length?f.weekdays:[new Date().getDay()],month_day:+f.month_day||1,remind:!!f.remind&&!!f.remind_time,remind_time:f.remind_time||null});setF(blank);load()};
  const cell=async(t,d)=>{const k=t.id+d,on=!!log[k];if(!on&&!(isDue(t,d)&&d<=T))return;setLog(l=>{const n={...l};on?delete n[k]:n[k]=1;return n});const r=await(on?supabase.from('task_log').delete().match({task_id:t.id,date:d}):supabase.from('task_log').insert({task_id:t.id,date:d}));if(r?.error)load()};
  const del=t=>undoable('Task',()=>supabase.from('tasks').delete().eq('id',t.id),{id:t.id,hide:()=>setTasks(r=>r.filter(y=>y.id!==t.id)),restore:load});
  return <Stack spacing={3}>
   <Box><Typography variant="h4">Tasks</Typography><Typography color="text.secondary">Task lists with repeats, reminders and a day-by-day log.</Typography></Box>
-  <Box><Button variant="contained" startIcon={<AddRounded/>} onClick={()=>setOpenL(true)}>New list</Button></Box>
+  <Box><Button variant="contained" startIcon={<SettingsRounded/>} onClick={()=>setOpenL(true)}>Manage lists</Button></Box>
   <Card sx={{p:1.5,display:'flex',alignItems:'center',gap:2,flexWrap:'wrap'}}>
    <Tabs value={lists.length?cur:false} onChange={(_,v)=>setCur(v)} variant="scrollable" sx={{flex:1,minWidth:200}}>{lists.map(l=><Tab key={l.id} label={l.name}/>)}</Tabs>
    </Card>
@@ -54,5 +57,12 @@ export default function Tasks(){
        <Checkbox size="small" checked={dn} disabled={!du&&!dn} onChange={()=>cell(t,d)} sx={du&&!dn&&d<T?{color:'error.main'}:undefined}/></TableCell>})}
       <TableCell><IconButton size="small" aria-label="Delete task" onClick={()=>del(t)}><DeleteRounded fontSize="small"/></IconButton></TableCell></TableRow>)
       :<TableRow><TableCell colSpan={16}><Typography color="text.secondary">No tasks in this list yet.</Typography></TableCell></TableRow>}</TableBody></Table></Card></Pane></>}
- <Dialog open={openL} onClose={()=>setOpenL(false)} fullWidth maxWidth="xs"><DialogTitle>New list</DialogTitle><DialogContent><TextField autoFocus fullWidth label="List name, e.g. Skin care" value={nl} onChange={e=>setNl(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addList()} sx={{mt:1}}/></DialogContent><DialogActions><Button onClick={()=>setOpenL(false)}>Cancel</Button><Button variant="contained" onClick={addList}>Create list</Button></DialogActions></Dialog>
+ <Dialog open={openL} onClose={()=>{setOpenL(false);setCfm(null)}} fullWidth maxWidth="sm"><DialogTitle>Manage lists</DialogTitle>
+  <DialogContent><Stack spacing={1.5} sx={{pt:1}}>
+   {lists.map(l=>{const n=tasks.filter(t=>t.list_id===l.id).length;return cfm===l.id
+    ?<Box key={l.id} sx={{display:'flex',alignItems:'center',gap:1,p:1.5,borderRadius:2,bgcolor:'action.hover',flexWrap:'wrap'}}><Typography sx={{flex:'1 1 200px'}}>Delete "{l.name}"{n?` and its ${n} task${n>1?'s':''}`:''}? This cannot be undone.</Typography><Button size="small" onClick={()=>setCfm(null)}>Cancel</Button><Button size="small" color="error" variant="contained" onClick={()=>delList(l)}>Delete</Button></Box>
+    :<Box key={l.id} sx={{display:'flex',alignItems:'flex-start',gap:1}}><TextField size="small" fullWidth value={ed[l.id]??l.name} onChange={e=>setEd({...ed,[l.id]:e.target.value})} onBlur={()=>rename(l)} onKeyDown={e=>e.key==='Enter'&&e.target.blur()} inputProps={{'aria-label':`Rename ${l.name}`}} helperText={`${n} task${n===1?'':'s'}`}/><IconButton aria-label={`Delete ${l.name}`} onClick={()=>setCfm(l.id)} sx={{mt:.25}}><DeleteRounded fontSize="small"/></IconButton></Box>})}
+   {!lists.length&&<Typography color="text.secondary">No lists yet.</Typography>}
+   <Box sx={{pt:1.5,borderTop:1,borderColor:'divider'}}><Typography variant="subtitle2" sx={{mb:1}}>Add a new list</Typography><Stack direction="row" spacing={1}><TextField fullWidth label="List name, e.g. Skin care" value={nl} onChange={e=>setNl(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addList()}/><Button variant="contained" onClick={addList}>Add</Button></Stack></Box></Stack></DialogContent>
+  <DialogActions><Button onClick={()=>{setOpenL(false);setCfm(null)}}>Done</Button></DialogActions></Dialog>
  </Stack>}
