@@ -1,13 +1,14 @@
--- Chakra schema for a brand-new project. For an existing or old database use reset_and_create.sql instead.
+-- Chakra full schema for a BRAND-NEW Supabase project (create only, nothing is dropped).
+-- For an existing database use the numbered files in supabase/migrations instead.
 -- PART 2: create tables
-create table public.task_lists (
+create table if not exists public.task_lists (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   name text not null,
   created_at timestamptz not null default now()
 );
 
-create table public.tasks (
+create table if not exists public.tasks (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   list_id uuid references task_lists on delete cascade,
@@ -22,14 +23,14 @@ create table public.tasks (
   created_at timestamptz not null default now()
 );
 
-create table public.task_log (
+create table if not exists public.task_log (
   task_id uuid not null references tasks on delete cascade,
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   date date not null,
   primary key (task_id, date)
 );
 
-create table public.schedule_items (
+create table if not exists public.schedule_items (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   title text not null,
@@ -39,14 +40,14 @@ create table public.schedule_items (
   created_at timestamptz not null default now()
 );
 
-create table public.schedule_log (
+create table if not exists public.schedule_log (
   item_id uuid not null references schedule_items on delete cascade,
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   date date not null,
   primary key (item_id, date)
 );
 
-create table public.schedule_changes (
+create table if not exists public.schedule_changes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   item_id uuid references schedule_items on delete set null,
@@ -56,7 +57,7 @@ create table public.schedule_changes (
   created_at timestamptz not null default now()
 );
 
-create table public.streaks (
+create table if not exists public.streaks (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   name text not null,
@@ -68,7 +69,7 @@ create table public.streaks (
   created_at timestamptz not null default now()
 );
 
-create table public.streak_days (
+create table if not exists public.streak_days (
   streak_id uuid not null references streaks on delete cascade,
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   date date not null,
@@ -78,7 +79,7 @@ create table public.streak_days (
   primary key (streak_id, date)
 );
 
-create table public.workouts (
+create table if not exists public.workouts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   date date not null default current_date,
@@ -88,7 +89,7 @@ create table public.workouts (
   created_at timestamptz not null default now()
 );
 
-create table public.metrics (
+create table if not exists public.metrics (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   name text not null,
@@ -99,7 +100,7 @@ create table public.metrics (
   created_at timestamptz not null default now()
 );
 
-create table public.metric_entries (
+create table if not exists public.metric_entries (
   metric_id uuid not null references metrics on delete cascade,
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   date date not null default current_date,
@@ -107,7 +108,7 @@ create table public.metric_entries (
   primary key (metric_id, date)
 );
 
-create table public.sleep_logs (
+create table if not exists public.sleep_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   date date not null,
@@ -120,7 +121,7 @@ create table public.sleep_logs (
   unique (user_id, date)
 );
 
-create table public.food_log (
+create table if not exists public.food_log (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   date date not null default current_date,
@@ -132,7 +133,7 @@ create table public.food_log (
   created_at timestamptz not null default now()
 );
 
-create table public.money_tags (
+create table if not exists public.money_tags (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   name text not null,
@@ -143,7 +144,7 @@ create table public.money_tags (
   unique (user_id, name, kind)
 );
 
-create table public.money_entries (
+create table if not exists public.money_entries (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   date date not null default current_date,
@@ -151,10 +152,11 @@ create table public.money_entries (
   category text,
   amount numeric not null,
   note text,
+  source text not null default 'UPI',
   created_at timestamptz not null default now()
 );
 
-create table public.splits (
+create table if not exists public.splits (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   who text,
@@ -164,7 +166,7 @@ create table public.splits (
   created_at timestamptz not null default now()
 );
 
-create table public.investments (
+create table if not exists public.investments (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   name text not null,
@@ -176,7 +178,7 @@ create table public.investments (
   created_at timestamptz not null default now()
 );
 
-create table public.investment_txns (
+create table if not exists public.investment_txns (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   investment_id uuid references investments on delete cascade,
@@ -186,7 +188,7 @@ create table public.investment_txns (
   pnl numeric
 );
 
-create table public.notes (
+create table if not exists public.notes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   title text,
@@ -194,14 +196,15 @@ create table public.notes (
   updated_at timestamptz not null default now()
 );
 
-create table public.collections (
+create table if not exists public.collections (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   section text,
-  name text not null
+  name text not null,
+  position int not null default 0
 );
 
-create table public.collection_entries (
+create table if not exists public.collection_entries (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users on delete cascade,
   collection_id uuid references collections on delete cascade,
@@ -211,7 +214,8 @@ create table public.collection_entries (
   rating int,
   cost numeric,
   progress int not null default 0,
-  episodes int not null default 0
+  episodes int not null default 0,
+  status text not null default 'done'
 );
 
 -- PART 3: indexes
@@ -239,3 +243,87 @@ end $$;
 
 -- PART 5: refresh the API so the new tables are visible straight away
 notify pgrst, 'reload schema';
+
+
+-- Office kanban
+
+create table if not exists public.office_columns (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  name text not null,
+  color text not null default '#94A3B8',
+  position int not null default 0,
+  is_done boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.office_envs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  name text not null,
+  color text not null default '#94A3B8',
+  position int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.office_tasks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  title text not null,
+  notes text,
+  column_id uuid not null references public.office_columns(id) on delete restrict,
+  env_id uuid references public.office_envs(id) on delete set null,
+  priority text not null default 'medium' check (priority in ('low','medium','high','urgent')),
+  due_date date,
+  position double precision not null default 1000,
+  completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.office_task_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  task_id uuid not null references public.office_tasks(id) on delete cascade,
+  kind text not null check (kind in ('created','status','environment')),
+  from_value text,
+  to_value text,
+  created_at timestamptz not null default now()
+);
+
+-- Part C: indexes
+create index if not exists office_columns_user_idx on public.office_columns (user_id, position);
+create index if not exists office_envs_user_idx on public.office_envs (user_id, position);
+create index if not exists office_tasks_board_idx on public.office_tasks (user_id, column_id, position);
+create index if not exists office_tasks_env_idx on public.office_tasks (user_id, env_id);
+create index if not exists office_events_user_idx on public.office_task_events (user_id, created_at desc);
+create index if not exists office_events_task_idx on public.office_task_events (task_id, created_at desc);
+
+-- Part D: row level security (each user sees only their own rows)
+alter table public.office_columns enable row level security;
+alter table public.office_envs enable row level security;
+alter table public.office_tasks enable row level security;
+alter table public.office_task_events enable row level security;
+
+do $$
+declare t text;
+begin
+  foreach t in array array['office_columns','office_envs','office_tasks','office_task_events'] loop
+    if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = t and policyname = 'own rows') then
+      execute format('create policy "own rows" on public.%I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
+    end if;
+  end loop;
+end $$;
+
+-- Part E: record that this migration ran (no policies on purpose, so the app itself cannot read it)
+create table if not exists public.app_migrations (
+  name text primary key,
+  applied_at timestamptz not null default now()
+);
+alter table public.app_migrations enable row level security;
+insert into public.app_migrations (name) values ('001_office_kanban') on conflict (name) do nothing;
+
+notify pgrst, 'reload schema';
+
+-- Result: lists the migrations applied so far
+select name, applied_at from public.app_migrations order by applied_at;

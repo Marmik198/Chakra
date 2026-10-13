@@ -18,7 +18,7 @@ export default function Tasks(){
   const[a,b,c,e]=await Promise.all([supabase.from('task_lists').select('*').order('created_at'),supabase.from('tasks').select('*').order('created_at'),supabase.from('task_log').select('task_id,date').gte('date',D[0]),supabase.from('task_log').select('task_id,date,tasks!inner(cycle)').in('tasks.cycle',['todo','once'])]);
   setLists(a.data||[]);setTasks(b.data||[]);const m={};(c.data||[]).forEach(r=>m[r.task_id+r.date]=1);setLog(m);setDoneMap(Object.fromEntries((e.data||[]).map(r=>[r.task_id,r.date])));rescheduleSoon()},[D]);
  useEffect(()=>{load()},[load]);
- const L=lists[cur],mine=tasks.filter(t=>L&&t.list_id===L.id),set=(k,v)=>setF(p=>({...p,[k]:v}));
+ const L=lists[cur],mine=tasks.filter(t=>L&&t.list_id===L.id),rp=mine.filter(t=>t.cycle!=='todo'&&t.cycle!=='once'),set=(k,v)=>setF(p=>({...p,[k]:v}));
  const addList=async()=>{if(!nl.trim())return;await supabase.from('task_lists').insert({name:nl.trim()});setNl('');await load();setCur(lists.length)};
  const rename=async l=>{const n=(ed[l.id]??l.name).trim();setEd(({[l.id]:_,...r})=>r);if(!n||n===l.name)return;await supabase.from('task_lists').update({name:n}).eq('id',l.id);load()};
  const delList=async l=>{setCfm(null);await supabase.from('task_lists').delete().eq('id',l.id);setCur(0);load()};
@@ -56,13 +56,13 @@ export default function Tasks(){
       fin=nr.filter(t=>doneMap[t.id]).sort((a,b)=>doneMap[b.id].localeCompare(doneMap[a.id])).slice(0,10);
      const row=(t,done)=><Box key={t.id} sx={{display:'flex',alignItems:'center',gap:1,py:.5,borderTop:1,borderColor:'divider'}}><Checkbox checked={done} onChange={()=>toggleTodo(t)}/><Typography sx={{flex:1,textDecoration:done?'line-through':'none',color:done?'text.secondary':undefined}}>{t.title}</Typography>{done?<Typography variant="caption" color="text.secondary">Done {fd(doneMap[t.id])}</Typography>:t.cycle==='once'?<Chip size="small" color={late(t)?'error':'default'} variant={late(t)?'filled':'outlined'} label={late(t)?`Overdue since ${fd(t.start_date)}`:`Due ${fd(t.start_date)}`}/>:<Chip size="small" variant="outlined" label="No date"/>}<IconButton size="small" aria-label="Delete" onClick={()=>del(t)}><DeleteRounded fontSize="small"/></IconButton></Box>;
      return <><Typography variant="h6">To-dos in {L.name}</Typography><Typography variant="body2" color="text.secondary" sx={{mb:1}}>Tasks that do not repeat. They stay on your Today page until you tick them off.</Typography>{open.map(t=>row(t,false))}{!open.length&&<Typography color="text.secondary" sx={{py:2}}>Nothing open. Add a To-do or a One time task in the Manage tab.</Typography>}{fin.length>0&&<><Typography variant="subtitle2" sx={{mt:2}}>Done recently</Typography>{fin.map(t=>row(t,true))}</>}</>})()}</Card></Pane><Pane id="tasks" name="Log"><Card sx={{p:2.5,overflowX:'auto'}}><Typography variant="h6" sx={{mb:1}}>Day-by-day log, last 14 days</Typography>
-    <Typography variant="caption" color="text.secondary">Ticked means done. A red box means due and missed. Click a day to correct it.</Typography>
+    <Typography variant="caption" color="text.secondary">Ticked means done. A red box means due and missed. Click a day to correct it. Only repeating tasks are shown here; one-time tasks and to-dos are in the To-dos tab.</Typography>
     <Table size="small"><TableHead><TableRow><TableCell>Task</TableCell>{D.map(d=><TableCell key={d} align="center" sx={{px:.5,fontWeight:d===T?800:500}}>{d.slice(8)}</TableCell>)}<TableCell/></TableRow></TableHead>
-     <TableBody>{mine.length?mine.map(t=><TableRow key={t.id}><TableCell sx={{whiteSpace:'nowrap'}}>{t.title}<Typography variant="caption" color="text.secondary" display="block">{CY[t.cycle]}{t.remind_time?` · ${t.remind_time.slice(0,5)}`:''}{t.remind?' 🔔':''}</Typography></TableCell>
+     <TableBody>{rp.length?rp.map(t=><TableRow key={t.id}><TableCell sx={{whiteSpace:'nowrap'}}>{t.title}<Typography variant="caption" color="text.secondary" display="block">{CY[t.cycle]}{t.remind_time?` · ${t.remind_time.slice(0,5)}`:''}{t.remind?' 🔔':''}</Typography></TableCell>
       {D.map(d=>{const du=t.cycle!=='todo'&&isDue(t,d),dn=!!log[t.id+d];return <TableCell key={d} align="center" sx={{p:0}}>
        <Checkbox size="small" checked={dn} disabled={!du&&!dn} onChange={()=>cell(t,d)} sx={du&&!dn&&d<T?{color:'error.main'}:undefined}/></TableCell>})}
       <TableCell><IconButton size="small" aria-label="Delete task" onClick={()=>del(t)}><DeleteRounded fontSize="small"/></IconButton></TableCell></TableRow>)
-      :<TableRow><TableCell colSpan={16}><Typography color="text.secondary">No tasks in this list yet.</Typography></TableCell></TableRow>}</TableBody></Table></Card></Pane></>}
+      :<TableRow><TableCell colSpan={16}><Typography color="text.secondary">No repeating tasks in this list yet.</Typography></TableCell></TableRow>}</TableBody></Table></Card></Pane></>}
  <Dialog open={openL} onClose={()=>{setOpenL(false);setCfm(null)}} fullWidth maxWidth="sm"><DialogTitle>Manage lists</DialogTitle>
   <DialogContent><Stack spacing={1.5} sx={{pt:1}}>
    {lists.map(l=>{const n=tasks.filter(t=>t.list_id===l.id).length;return cfm===l.id

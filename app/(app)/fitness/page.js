@@ -15,7 +15,7 @@ const LIB={Chest:['Bench press','Incline press','Decline press','Pec deck','Cabl
 const fd=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}),fdl=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
 const n0=n=>Math.round(n).toLocaleString('en-IN');
 export default function Fitness(){
- const [k,setK]=useState(0),[g,setG]=useState('Chest'),[ex,setEx]=useState('Bench press'),[wd,setWd]=useState(iso(new Date())),[r,setR]=useState(''),[w,setW]=useState(''),[sets,setSets]=useState([]),[rows,setRows]=useState([]),[pg,setPg]=useState('Chest');
+ const [k,setK]=useState(0),[mk,setMk]=useState(0),[g,setG]=useState('Chest'),[ex,setEx]=useState('Bench press'),[wd,setWd]=useState(iso(new Date())),[r,setR]=useState(''),[w,setW]=useState(''),[sets,setSets]=useState([]),[rows,setRows]=useState([]),[pg,setPg]=useState('Chest');
  const cardio=g==='Cardio',u=cardio?'km':'kg';
  const load=useCallback(async()=>{const{data}=await supabase.from('workouts').select('*').gte('date',iso(new Date(Date.now()-365*864e5))).order('date');setRows(data||[])},[]);
  useEffect(()=>{load()},[load]);
@@ -28,8 +28,8 @@ export default function Fitness(){
  return <Stack spacing={3}>
   <Box><Typography variant="h4">Fitness</Typography><Typography color="text.secondary">Track your body, log sets by day, and see your progress.</Typography></Box>
   <TabBar id="fitness" tabs={['Measurements','Log workout','Progress']}/>
-  <Pane id="fitness" name="Measurements"><Stack spacing={3}><BmiCard refresh={k}/>
-   <Metrics onLog={()=>setK(x=>x+1)} section="fitness" title="Body measurements" defaults={[['Weight','kg',null,null],['Waist','cm',null,null],['Body fat','%',null,null]]}/></Stack></Pane>
+  <Pane id="fitness" name="Measurements"><Stack spacing={3}><BmiCard refresh={k} onSaved={()=>setMk(x=>x+1)}/>
+   <Metrics key={mk} onLog={()=>setK(x=>x+1)} section="fitness" title="Body measurements" defaults={[['Height','cm',null,null],['Weight','kg',null,null],['Waist','cm',null,null],['Body fat','%',null,null]]}/></Stack></Pane>
   <Pane id="fitness" name="Log workout"><Stack spacing={3}>
    <Card sx={{p:2.5,maxWidth:760}}><Typography variant="h6" sx={{mb:2}}>Log sets</Typography>
     <Box sx={{display:'grid',gap:2,gridTemplateColumns:{xs:'1fr',sm:'1fr 1fr',md:'1fr 1fr 1.4fr'}}}>
