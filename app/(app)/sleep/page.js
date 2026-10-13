@@ -5,12 +5,14 @@ import {BarChart} from '@/components/Charts';
 import DeleteRounded from '@mui/icons-material/DeleteRounded';
 import {TabBar,Pane} from '@/components/Tabs';
 import {usePaged,Pager} from '@/components/Pager';
+import DataTable from '@/components/DataTable';
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
 import {iso} from '@/lib/due';
 import {dur,hm,avgTime,spread,winPos} from '@/lib/sleep';
 const BLUE='#6D8EF5',t5=t=>(t||'').slice(0,5);
 const Stat=({l,v,s,c})=><Card sx={{p:2.5}}><Typography variant="body2" color="text.secondary">{l}</Typography><Typography variant="h5" sx={{color:c}}>{v}</Typography><Typography variant="caption" color="text.secondary">{s}</Typography></Card>;
+const fday=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 export default function Sleep(){
  const T=iso(new Date()),from=useMemo(()=>{const d=new Date();d.setDate(d.getDate()-29);return iso(d)},[]);
  const [rows,setRows]=useState([]),[f,setF]=useState({date:T,bed:'23:00',wake:'07:00',q:4,note:''}),[gmin,setGmin]=useState(7.5),[gmax,setGmax]=useState(8.5);
@@ -45,7 +47,6 @@ export default function Sleep(){
     <Box sx={{display:'flex',gap:.5,height:190,pl:5.5,mt:1.5,position:'relative'}}>{[['20:00',0],['00:00',25],['04:00',50],['08:00',75],['12:00',100]].map(([t,p])=><Typography key={t} variant="caption" color="text.secondary" sx={{position:'absolute',left:0,top:`calc(${p}% - 9px)`}}>{t}</Typography>)}
      {l14.map(r=>{const w=winPos(r.bedtime,r.minutes);return <Box key={r.id} title={`${r.bedtime} to ${r.wake_time}`} sx={{flex:1,position:'relative',bgcolor:'action.hover',borderRadius:1}}><Box sx={{position:'absolute',left:2,right:2,top:`${w.top}%`,height:`${w.h}%`,borderRadius:1,bgcolor:BLUE}}/></Box>})}</Box></Card></Box>
   </Pane><Pane id="sleep" name="History"><Card sx={{p:2.5}}><Typography variant="h6">Recent nights</Typography>
-   <List dense>{pgR.slice.map(r=><ListItem key={r.id} disableGutters divider secondaryAction={<IconButton size="small" aria-label="Delete" onClick={()=>del(r)}><DeleteRounded fontSize="small"/></IconButton>}>
-    <ListItemText primary={`${r.date.slice(5)} · ${r.bedtime} to ${r.wake_time}`} secondary={`${hm(r.minutes)} · ${(r.minutes/90).toFixed(1)} cycles${r.note?' · '+r.note:''}`}/>{r.quality?<Rating size="small" readOnly value={r.quality} sx={{mr:5}}/>:null}</ListItem>)}
-    {!rows.length&&<Typography color="text.secondary" sx={{py:2}}>No nights logged yet.</Typography>}</List><Pager pg={pgR}/></Card>
+   <DataTable rows={pgR.slice} empty="No nights logged yet." actions={r=><IconButton size="small" aria-label="Delete" onClick={()=>del(r)}><DeleteRounded fontSize="small"/></IconButton>}
+    columns={[{label:'Date',render:r=>fday(r.date)},{label:'Bedtime',render:r=>String(r.bedtime).slice(0,5)},{label:'Wake up',render:r=>String(r.wake_time).slice(0,5)},{label:'Slept',render:r=>`${hm(r.minutes)} · ${(r.minutes/90).toFixed(1)} cycles`},{label:'Quality',render:r=>r.quality?<Rating size="small" readOnly value={r.quality}/>:'–'},{label:'Note',render:r=>r.note||'–'}]}/><Pager pg={pgR}/></Card>
  </Pane></Stack>}

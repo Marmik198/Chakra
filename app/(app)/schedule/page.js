@@ -5,6 +5,7 @@ import DeleteRounded from '@mui/icons-material/DeleteRounded';
 import EditRounded from '@mui/icons-material/EditRounded';
 import {TabBar,Pane} from '@/components/Tabs';
 import {usePaged,Pager} from '@/components/Pager';
+import DataTable from '@/components/DataTable';
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
 import {iso} from '@/lib/due';
@@ -42,8 +43,7 @@ export default function Schedule(){
     <Box><Typography variant="caption" color="text.secondary">Repeats on</Typography><br/><DaysPick v={f.days} set={d=>setF({...f,days:d})}/></Box>
     <Box><Button variant="contained" onClick={add}>Add to timetable</Button></Box></Stack></Card></Pane>
   <Pane id="schedule" name="Ledger"><Card sx={{p:2.5}}><Typography variant="h6">Changes</Typography><Typography variant="body2" color="text.secondary">A record of every time you added, moved, renamed or removed something.</Typography>
-   <List dense>{pgC.slice.map(c=><ListItem key={c.id} disableGutters divider><ListItemText primary={c.change} secondary={new Date(c.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}/></ListItem>)}
-    {!changes.length&&<Typography color="text.secondary" sx={{py:2}}>No changes yet.</Typography>}</List><Pager pg={pgC}/></Card></Pane>
+   <DataTable rows={pgC.slice} empty="No changes yet." columns={[{label:'When',render:c=>new Date(c.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})},{label:'Change',render:c=>c.change}]}/><Pager pg={pgC}/></Card></Pane>
   <Dialog open={!!ed} onClose={()=>setEd(null)} fullWidth maxWidth="xs"><DialogTitle>Edit schedule item</DialogTitle>
    <DialogContent><Stack spacing={2} sx={{pt:1}}><TextField label="What" value={ed?.title||''} onChange={e=>setEd({...ed,title:e.target.value})}/>
     <Stack direction="row" spacing={2}><TextField label="Starts" type="time" InputLabelProps={{shrink:true}} value={ed?.start||''} onChange={e=>setEd({...ed,start:e.target.value})}/><TextField label="Ends" type="time" InputLabelProps={{shrink:true}} value={ed?.end||''} onChange={e=>setEd({...ed,end:e.target.value})}/></Stack>

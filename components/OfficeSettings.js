@@ -5,7 +5,8 @@ import DeleteRounded from '@mui/icons-material/DeleteRounded';
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded';
 import {supabase} from '@/lib/supabase';
-const Color=({value,onChange,label})=><Box component="input" type="color" aria-label={label} value={value} onChange={e=>onChange(e.target.value)} sx={{width:36,height:36,p:0,border:0,bgcolor:'transparent',cursor:'pointer',flexShrink:0}}/>;
+import ColorField from '@/components/ColorField';
+const Color=p=><ColorField compact {...p}/>;
 // Manage the board: rename, recolour, reorder and delete statuses, and the same for environments.
 export default function OfficeSettings({open,onClose,cols,envs,tasks,reload}){
  const [nc,setNc]=useState(''),[ne,setNe]=useState(''),[cc,setCc]=useState('#3B82F6'),[ec,setEc]=useState('#0EA5E9'),[cfm,setCfm]=useState(null),[ed,setEd]=useState({});
@@ -34,9 +35,9 @@ export default function OfficeSettings({open,onClose,cols,envs,tasks,reload}){
    <Divider sx={{my:3}}/>
    <Typography variant="subtitle1" fontWeight={700}>Environments</Typography>
    <Typography variant="body2" color="text.secondary" sx={{mb:1.5}}>Where a task is running or being tested. Deleting one leaves its tasks without an environment.</Typography>
-   <Stack spacing={1.5}>{envs.map(e=><Box key={e.id} sx={{display:'flex',alignItems:'center',gap:1}}>
+   <Stack spacing={1.5}>{envs.map(e=><Box key={e.id} sx={{display:'flex',alignItems:'center',gap:1,flexWrap:'wrap'}}>
     <Color value={e.color} label={`Colour for ${e.name}`} onChange={v=>upd('office_envs',e.id,{color:v})}/>
-    <TextField size="small" fullWidth value={ed[e.id]??e.name} onChange={x=>setEd({...ed,[e.id]:x.target.value})} onBlur={()=>rename('office_envs',e)} onKeyDown={x=>x.key==='Enter'&&x.target.blur()} inputProps={{'aria-label':`Rename ${e.name}`}}/>
+    <TextField size="small" sx={{flex:'1 1 140px'}} value={ed[e.id]??e.name} onChange={x=>setEd({...ed,[e.id]:x.target.value})} onBlur={()=>rename('office_envs',e)} onKeyDown={x=>x.key==='Enter'&&x.target.blur()} inputProps={{'aria-label':`Rename ${e.name}`}}/>
     <IconButton size="small" aria-label={`Delete ${e.name}`} onClick={()=>delEnv(e)}><DeleteRounded fontSize="small"/></IconButton></Box>)}
     <Stack direction="row" spacing={1} alignItems="center"><Color value={ec} label="Colour for the new environment" onChange={setEc}/><TextField size="small" fullWidth label="New environment, e.g. Staging" value={ne} onChange={e=>setNe(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addEnv()}/><Button variant="contained" onClick={addEnv}>Add</Button></Stack></Stack></DialogContent>
   <DialogActions><Button onClick={onClose}>Done</Button></DialogActions></Dialog>}

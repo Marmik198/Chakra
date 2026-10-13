@@ -6,9 +6,14 @@ import DeleteRounded from '@mui/icons-material/DeleteRounded';
 import CloseRounded from '@mui/icons-material/CloseRounded';
 import {TabBar,Pane} from '@/components/Tabs';
 import {Donut} from '@/components/Donut';
+import {SOURCES,bySource} from '@/lib/reportCore';
 import ChevronLeftRounded from '@mui/icons-material/ChevronLeftRounded';
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded';
 import {usePaged,Pager} from '@/components/Pager';
+import Clamp from '@/components/Clamp';
+import DataTable from '@/components/DataTable';
+import ColorField from '@/components/ColorField';
+const fday=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
 import {iso,lastDays} from '@/lib/due';
@@ -20,7 +25,8 @@ const Dot=({c})=><Box component="span" sx={{display:'inline-block',width:10,heig
 const Stat=({l,v,c})=><Card sx={{p:2.5}}><Typography variant="body2" color="text.secondary">{l}</Typography><Typography variant="h5" sx={{color:c}}>{v}</Typography></Card>;
 export default function Money(){
  const seeded=useRef(false),thisMonth=iso(new Date()).slice(0,7),[month,setMonth]=useState(thisMonth),[yy,mm]=month.split('-').map(Number),nDays=new Date(yy,mm,0).getDate(),mStart=`${month}-01`,mEnd=`${month}-${String(nDays).padStart(2,'0')}`,D=useMemo(()=>Array.from({length:nDays},(_,i)=>`${month}-${String(i+1).padStart(2,'0')}`),[month,nDays]),mLabel=new Date(yy,mm-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'}),shift=n=>{const d=new Date(yy,mm-1+n,1);setMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)};
- const [rows,setRows]=useState([]),[splits,setSplits]=useState([]),[tags,setTags]=useState([]),[dv,setDv]=useState('Expense'),[f,setF]=useState({type:'Expense',tag:'Food & Dining',amount:'',note:'',date:iso(new Date())}),[s,setS]=useState({who:'',amount:'',direction:'owes me',note:''}),[nt,setNt]=useState({name:'',kind:'expense',color:'#6A4DF4',description:''});
+ const [rows,setRows]=useState([]),[splits,setSplits]=useState([]),[tags,setTags]=useState([]),[dv,setDv]=useState('Expense'),[f,setF]=useState({type:'Expense',tag:'Food & Dining',amount:'',note:'',date:iso(new Date()),source:'UPI'}),[s,setS]=useState({who:'',amount:'',direction:'owes me',note:''}),[nt,setNt]=useState({name:'',kind:'expense',color:'#6A4DF4',description:''});
+ const srcData=useMemo(()=>bySource(rows,dv),[rows,dv]);
  const loadTags=useCallback(async()=>{let{data}=await supabase.from('money_tags').select('*').order('created_at',{ascending:true,nullsFirst:true});
   if(!data?.length&&!seeded.current){seeded.current=true;await supabase.from('money_tags').upsert(DEF.map(([name,kind,color,description])=>({name,kind,color,description})),{onConflict:'user_id,name,kind',ignoreDuplicates:true});({data}=await supabase.from('money_tags').select('*'))}
   setTags(data||[])},[]);
@@ -28,7 +34,7 @@ export default function Money(){
  useEffect(()=>{load();loadTags()},[load,loadTags]);
  const today=()=>iso(new Date()),tagOf=(type,name)=>{const n=LEGACY[name]||name;return tags.find(t=>t.kind===type.toLowerCase()&&t.name===n)};
  const ofKind=k=>tags.filter(t=>t.kind===k.toLowerCase());
- const add=async()=>{const a=+f.amount;if(!(a>0))return;await supabase.from('money_entries').insert({date:f.date||today(),type:f.type,category:f.tag,amount:a,note:f.note});setF({...f,amount:'',note:''});load()};
+ const add=async()=>{const a=+f.amount;if(!(a>0))return;await supabase.from('money_entries').insert({date:f.date||today(),type:f.type,category:f.tag,amount:a,note:f.note,source:f.source});setF({...f,amount:'',note:''});load()};
  const del=x=>undoable('Entry',()=>supabase.from('money_entries').delete().eq('id',x.id),{id:x.id,hide:()=>setRows(r=>r.filter(y=>y.id!==x.id)),restore:load});
  const addTag=async()=>{const n=nt.name.trim();if(!n)return;await supabase.from('money_tags').upsert({name:n,kind:nt.kind,color:nt.color,description:nt.description},{onConflict:'user_id,name,kind'});setNt({...nt,name:'',description:''});loadTags()};
  const delTag=t=>undoable(`Tag "${t.name}"`,()=>supabase.from('money_tags').delete().eq('id',t.id),{id:t.id,hide:()=>setTags(r=>r.filter(y=>y.id!==t.id)),restore:loadTags});
@@ -48,6 +54,7 @@ export default function Money(){
    <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" alignItems="center">
     <ToggleButtonGroup exclusive size="small" value={f.type} onChange={(_,v)=>v&&setF({...f,type:v,tag:(ofKind(v)[0]||{}).name||''})}><ToggleButton value="Expense">Expense</ToggleButton><ToggleButton value="Income">Income</ToggleButton></ToggleButtonGroup>
     <Select value={ofKind(f.type).some(t=>t.name===f.tag)?f.tag:''} displayEmpty onChange={e=>setF({...f,tag:e.target.value})} sx={{minWidth:190}} renderValue={v=>v?<Box sx={{display:'flex',alignItems:'center'}}><Dot c={tagOf(f.type,v)?.color}/>{v}</Box>:'Choose a tag'}>{ofKind(f.type).map(t=><MenuItem key={t.id} value={t.name}><Dot c={t.color}/>{t.name}</MenuItem>)}</Select>
+    <TextField select label="Source" value={f.source} onChange={e=>setF({...f,source:e.target.value})} sx={{width:170}}>{SOURCES.map(x=><MenuItem key={x[0]} value={x[0]}>{x[1]}</MenuItem>)}</TextField>
     <TextField label="Date" type="date" InputLabelProps={{shrink:true}} value={f.date} onChange={e=>setF({...f,date:e.target.value})} sx={{width:160}}/>
     <TextField label="Amount ₹" type="number" value={f.amount} onChange={e=>setF({...f,amount:e.target.value})} sx={{width:130}}/>
     <TextField label="Note" value={f.note} onChange={e=>setF({...f,note:e.target.value})} onKeyDown={e=>e.key==='Enter'&&add()} sx={{flex:1,minWidth:160}}/>
@@ -55,25 +62,33 @@ export default function Money(){
   </Pane><Pane id="money" name="Graphs"><Box sx={{display:'grid',gap:3,gridTemplateColumns:{md:'1fr 1fr'}}}>
    <Card sx={{p:2.5}}><Box sx={{display:'flex',justifyContent:'space-between',alignItems:'center',mb:2}}><Typography variant="h6">By tag</Typography><ToggleButtonGroup exclusive size="small" value={dv} onChange={(_,v)=>v&&setDv(v)}><ToggleButton value="Expense">Spent</ToggleButton><ToggleButton value="Income">Earned</ToggleButton></ToggleButtonGroup></Box>
     <Donut data={data} total={total} label={dv==='Expense'?'Spent':'Earned'}/>
-    <Stack spacing={.5} sx={{mt:2}}>{data.map(d=><Tooltip key={d.name} title={d.description} placement="left"><Box sx={{display:'flex',alignItems:'center',py:.5}}><Dot c={d.color}/><Typography sx={{flex:1}}>{d.name}</Typography><Typography variant="body2" color="text.secondary" sx={{mr:1.5}}>{(d.value/total*100).toFixed(0)}%</Typography><Typography fontWeight={700}>{rs(d.value)}</Typography></Box></Tooltip>)}</Stack></Card>
+    <Stack spacing={.5} sx={{mt:2}}>{data.map(d=><Tooltip key={d.name} title={d.description} placement="left"><Box sx={{display:'flex',alignItems:'center',py:.5}}><Dot c={d.color}/><Clamp sx={{flex:1}}>{d.name}</Clamp><Typography variant="body2" color="text.secondary" sx={{mr:1.5}}>{(d.value/total*100).toFixed(0)}%</Typography><Typography fontWeight={700}>{rs(d.value)}</Typography></Box></Tooltip>)}</Stack></Card>
    <Card sx={{p:2.5}}><Typography variant="h6">Daily spending</Typography><Typography variant="caption" color="text.secondary">{mLabel}</Typography>
-    <BarChart height={260} xAxis={[{scaleType:'band',data:D,valueFormatter:(d,c)=>c.location==='tick'?d.slice(8):fdl(d)}]} series={[{data:daily,color:'#14A38B',label:'Spent',valueFormatter:v=>rs(v)}]} slotProps={{legend:{hidden:true}}}/></Card></Box>
+    <BarChart height={260} xAxis={[{scaleType:'band',data:D,valueFormatter:(d,c)=>c.location==='tick'?d.slice(8):fdl(d)}]} series={[{data:daily,color:'#14A38B',label:'Spent',valueFormatter:v=>rs(v)}]} slotProps={{legend:{hidden:true}}}/></Card>
+   <Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:2}}>By source</Typography><Donut data={srcData} total={total} label={dv==='Expense'?'Spent':'Earned'}/>
+    <Stack spacing={.5} sx={{mt:2}}>{srcData.map(d=><Box key={d.name} sx={{display:'flex',alignItems:'center',py:.5}}><Dot c={d.color}/><Clamp sx={{flex:1}}>{d.name}</Clamp><Typography variant="body2" color="text.secondary" sx={{mr:1.5}}>{total?(d.value/total*100).toFixed(0):0}%</Typography><Typography fontWeight={700}>{rs(d.value)}</Typography></Box>)}</Stack></Card></Box>
   </Pane><Pane id="money" name="Tags"><Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:1}}>Tags</Typography><Typography variant="body2" color="text.secondary" sx={{mb:2}}>Every entry gets one tag. Add your own with a colour and a short description. The description appears in the chart tooltip.</Typography>
    {['expense','income'].map(k=><Box key={k} sx={{mb:2}}><Typography variant="subtitle2" sx={{mb:.5,textTransform:'capitalize'}}>{k}</Typography><Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">{ofKind(k).map(t=><Tooltip key={t.id} title={t.description||''}><Chip label={t.name} onDelete={()=>delTag(t)} deleteIcon={<CloseRounded/>} sx={{bgcolor:`${t.color}26`,color:'text.primary','& .MuiChip-label':{pl:1.5},'&::before':{content:'""',width:10,height:10,borderRadius:'50%',bgcolor:t.color,ml:1.25}}}/></Tooltip>)}</Stack></Box>)}
    <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" alignItems="center" sx={{mt:1}}>
     <TextField label="New tag name" value={nt.name} onChange={e=>setNt({...nt,name:e.target.value})} sx={{minWidth:160}}/>
     <Select value={nt.kind} onChange={e=>setNt({...nt,kind:e.target.value})}><MenuItem value="expense">Expense</MenuItem><MenuItem value="income">Income</MenuItem></Select>
-    <Box component="input" type="color" aria-label="Tag colour" value={nt.color} onChange={e=>setNt({...nt,color:e.target.value})} sx={{width:44,height:40,p:0,border:0,bgcolor:'transparent',cursor:'pointer'}}/>
+    <ColorField label="Tag colour" value={nt.color} onChange={c=>setNt({...nt,color:c})}/>
     <TextField label="What is this tag for?" value={nt.description} onChange={e=>setNt({...nt,description:e.target.value})} sx={{flex:1,minWidth:200}}/>
     <Button variant="contained" onClick={addTag}>Add tag</Button></Stack></Card>
   </Pane><Pane id="money" name="Overview"><Card sx={{p:2.5}}><Typography variant="h6">Entries · {mLabel}</Typography>
-   <List dense>{pgE.slice.map(x=>{const t=tagOf(x.type,x.category);return <ListItem key={x.id} disableGutters divider secondaryAction={<IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton>}>
-    <Chip size="small" label={t?t.name:x.category||'Untagged'} sx={{mr:1.5,bgcolor:`${t?.color||'#94A3B8'}33`,fontWeight:600}}/><ListItemText primary={x.note||' '} secondary={x.date.slice(5)}/><Typography fontWeight={700} sx={{mr:5}} color={x.type==='Income'?'success.main':'error.main'}>{x.type==='Income'?'+':'−'}{rs(+x.amount)}</Typography></ListItem>})}
-    {!rows.length&&<Typography color="text.secondary" sx={{py:2}}>No entries this month.</Typography>}</List><Pager pg={pgE}/></Card>
+   <DataTable rows={pgE.slice} empty="No entries this month." actions={x=><IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton>} columns={[
+     {label:'Date',render:x=>fday(x.date)},
+     {label:'Tag',render:x=>{const t=tagOf(x.type,x.category);return <Tooltip title={t?t.name:x.category||''}><Chip size="small" label={t?t.name:x.category||'Untagged'} sx={{maxWidth:'100%',bgcolor:`${t?.color||'#94A3B8'}33`,fontWeight:600}}/></Tooltip>}},
+     {label:'Source',render:x=>SOURCES.find(z=>z[0]===x.source)?.[1]||x.source||'–'},
+     {label:'Note',render:x=>x.note||'–'},
+     {label:'Amount',align:'right',render:x=><Typography fontWeight={700} color={x.type==='Income'?'success.main':'error.main'}>{x.type==='Income'?'+':'−'}{rs(+x.amount)}</Typography>}]}/><Pager pg={pgE}/></Card>
   </Pane><Pane id="money" name="Splits"><Card sx={{p:2.5}}><Typography variant="h6">Split tracker</Typography>
    <Typography variant="body2" color="text.secondary" sx={{mb:1}}>Paying for someone is logged as an expense. When they pay you back, it is logged as income.</Typography>
-   <List dense>{splits.map(x=><ListItem key={x.id} disableGutters divider secondaryAction={<Button size="small" variant="outlined" onClick={()=>settle(x)}>{x.direction==='owes me'?'Received':'I paid'}</Button>}>
-    <ListItemText primary={`${x.who} ${x.direction==='owes me'?'owes you':'you owe'} ${rs(+x.amount)}`} secondary={x.note}/></ListItem>)}</List>
+   <DataTable rows={splits} empty="Nothing to settle." actionsWidth={110} actions={x=><Button size="small" variant="outlined" onClick={()=>settle(x)}>{x.direction==='owes me'?'Received':'I paid'}</Button>} columns={[
+     {label:'Person',render:x=>x.who},
+     {label:'Who owes',render:x=>x.direction==='owes me'?'They owe you':'You owe them'},
+     {label:'Amount',align:'right',render:x=>rs(+x.amount)},
+     {label:'Note',render:x=>x.note||'–'}]}/>
    <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" sx={{mt:1}}>
     <TextField label="Person" value={s.who} onChange={e=>setS({...s,who:e.target.value})}/>
     <Select value={s.direction} onChange={e=>setS({...s,direction:e.target.value})}><MenuItem value="owes me">I paid, they owe me</MenuItem><MenuItem value="I owe">I owe them</MenuItem></Select>

@@ -8,9 +8,9 @@ const t5=t=>(t||'').slice(0,5),fd=d=>new Date(d+'T00:00').toLocaleDateString('en
 export default function Today(){
  const T=iso(new Date()),dow=new Date().getDay(),[tasks,setTasks]=useState([]),[done,setDone]=useState(new Set()),[sched,setSched]=useState([]),[sdone,setSdone]=useState(new Set()),[win,setWin]=useState(''),[lrn,setLrn]=useState(''),[ready,setReady]=useState(false),[allT,setAllT]=useState([]),[doneMap,setDoneMap]=useState({});
  const load=useCallback(async()=>{
-  const[a,b,c,d]=await Promise.all([supabase.from('tasks').select('*,task_lists(name)'),supabase.from('task_log').select('task_id').eq('date',T),supabase.from('schedule_items').select('*').order('start_time'),supabase.from('schedule_log').select('item_id').eq('date',T)]);
+  const[a,b,c,d,e]=await Promise.all([supabase.from('tasks').select('*,task_lists(name)'),supabase.from('task_log').select('task_id').eq('date',T),supabase.from('schedule_items').select('*').order('start_time'),supabase.from('schedule_log').select('item_id').eq('date',T),supabase.from('task_log').select('task_id,date,tasks!inner(cycle)').in('tasks.cycle',['todo','once'])]);
   setTasks((a.data||[]).filter(t=>isDue(t,T)).sort((x,y)=>(x.remind_time||'99').localeCompare(y.remind_time||'99')));
-  setDone(new Set((b.data||[]).map(r=>r.task_id)));setSched((c.data||[]).filter(i=>i.days.includes(dow)));setSdone(new Set((d.data||[]).map(r=>r.item_id)));setAllT(a.data||[]);const nr=(a.data||[]).filter(t=>t.cycle==='todo'||t.cycle==='once').map(t=>t.id);if(nr.length){const l2=await supabase.from('task_log').select('task_id,date').in('task_id',nr);setDoneMap(Object.fromEntries((l2.data||[]).map(r=>[r.task_id,r.date])))}else setDoneMap({});setReady(true)},[T,dow]);
+  setDone(new Set((b.data||[]).map(r=>r.task_id)));setSched((c.data||[]).filter(i=>i.days.includes(dow)));setSdone(new Set((d.data||[]).map(r=>r.item_id)));setAllT(a.data||[]);setDoneMap(Object.fromEntries((e.data||[]).map(r=>[r.task_id,r.date])));setReady(true)},[T,dow]);
  useEffect(()=>{load()},[load]);
  const flip=(set,id)=>set(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n});
  const toggle=async t=>{const on=done.has(t.id);flip(setDone,t.id);const r=await(on?supabase.from('task_log').delete().match({task_id:t.id,date:T}):supabase.from('task_log').insert({task_id:t.id,date:T}));if(r?.error)load()};

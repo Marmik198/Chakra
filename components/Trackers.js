@@ -8,6 +8,7 @@ import EditNoteRounded from '@mui/icons-material/EditNoteRounded';
 import LocalFireDepartmentRounded from '@mui/icons-material/LocalFireDepartmentRounded';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import {TabBar,Pane} from '@/components/Tabs';
+import DataTable from '@/components/DataTable';
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
 import {iso} from '@/lib/due';
@@ -34,14 +35,14 @@ export default function Trackers({section,title,sub,example='e.g. Days not eaten
   <Pane id={tid} name="Add new"><Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:1.5}}>Add a new tracker</Typography><Stack direction="row" spacing={2} useFlexGap flexWrap="wrap">
    <TextField label={example} value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&add()} sx={{flex:1,minWidth:200}}/>
    <Button variant="contained" onClick={add}>Add</Button></Stack>
-   <ToggleButtonGroup exclusive size="small" value={kind} onChange={(_,v)=>v&&setKind(v)} sx={{mt:2}} aria-label="Tracker type"><ToggleButton value="counter">Counted Streaks</ToggleButton><ToggleButton value="simple">Clean Streaks only</ToggleButton></ToggleButtonGroup>
-   <Typography variant="body2" color="text.secondary" sx={{mt:1}}>{kind==='counter'?'Check in or slip, and also count how many times each day.':'Just record whether you did it or slipped. No counter.'}</Typography></Card></Pane>
+   <ToggleButtonGroup exclusive size="small" value={kind} onChange={(_,v)=>v&&setKind(v)} sx={{mt:2}} aria-label="Tracker type"><ToggleButton value="counter">Counted streak</ToggleButton><ToggleButton value="simple">Clean streak</ToggleButton></ToggleButtonGroup>
+   <Typography variant="body2" color="text.secondary" sx={{mt:1}}>{kind==='counter'?'Counted streak: check in or slip, and also count how many times each day.':'Clean streak: just record whether you did it or slipped. No counter.'}</Typography></Card></Pane>
   <Pane id={tid} not name={['Add new',...(extraTab?[extraTab]:[])]}><Box sx={{display:'grid',gap:2,gridTemplateColumns:'repeat(auto-fill,minmax(330px,1fr))'}}>{rows.map(s=>{
    const simple=s.kind==='simple',st=stats(s.streak_days,T),td=st.map.get(T),status=td?.status,cnt=td?.count||0,cur=st.current,nx=MS.find(m=>m>cur)||cur+1,pv=[0,...MS].filter(m=>m<=cur).pop();
    const log=[...(s.streak_days||[])].filter(x=>x.note||x.status==='slip').sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
    const setCount=n=>n<=0?clear(s,T):put(s,T,{status:status||'clean',count:n,note:td?.note||null});
    return <Card key={s.id} sx={{p:2.5}}>
-    <Box sx={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><Box sx={{display:'flex',alignItems:'center',gap:1,flexWrap:'wrap'}}><Typography variant="h6">{s.name}</Typography><Chip size="small" variant="outlined" label={simple?'Clean Streaks':'Counted Streaks'}/></Box><IconButton size="small" aria-label="Delete tracker" onClick={()=>del(s)}><DeleteRounded fontSize="small"/></IconButton></Box>
+    <Box sx={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><Box sx={{display:'flex',alignItems:'center',gap:1,flexWrap:'wrap'}}><Typography variant="h6">{s.name}</Typography><Chip size="small" variant="outlined" label={simple?'Clean streak':'Counted streak'}/></Box><IconButton size="small" aria-label="Delete tracker" onClick={()=>del(s)}><DeleteRounded fontSize="small"/></IconButton></Box>
     <Pane id={tid} name="Trackers">
      <Box sx={{display:'flex',alignItems:'center',gap:1,my:1,color:cur?'warning.main':'text.secondary'}}><LocalFireDepartmentRounded sx={{fontSize:40}}/><Typography variant="h3">{cur}</Typography><Typography color="text.secondary">day streak</Typography></Box>
      <LinearProgress variant="determinate" color="secondary" value={(cur-pv)/(nx-pv)*100} sx={{height:8,borderRadius:4}}/>
@@ -56,7 +57,7 @@ export default function Trackers({section,title,sub,example='e.g. Days not eaten
     </Pane>
     <Pane id={tid} name="History"><Box sx={{display:'grid',gridTemplateColumns:'repeat(14,1fr)',gap:.5,mt:1}}>{cells.map(d=>{const x=st.map.get(d),v=x?.status,n=x?.count||1;return <Tooltip key={d} title={v?`${fmt(d)} · ${v==='clean'?(simple?'done':'clean'):'slip'}${simple?'':` · ${times(n)}`}`:`${fmt(d)} · not logged`}><Box component="button" aria-label={`${fmt(d)} ${v?v+(simple?'':', '+times(n)):'not logged'}`} onClick={()=>cycle(s,d,x)} sx={{aspectRatio:'1',border:d===T?'2px solid':0,borderColor:'primary.main',borderRadius:1,p:0,cursor:'pointer',bgcolor:col[v]||'divider'}}/></Tooltip>})}</Box>
      <Typography variant="caption" color="text.secondary">Last 6 weeks. Hover a day to see its date{simple?'':' and count'}. Tap a day to change it.</Typography></Pane>
-    <Pane id={tid} name="Notes & slips">{log.length>0?<><Typography variant="subtitle2" sx={{mt:1}}>Notes and slips</Typography><List dense disablePadding>{log.map(x=><ListItem key={x.date} disableGutters secondaryAction={<IconButton size="small" aria-label="Remove entry" onClick={()=>clear(s,x.date)}><DeleteRounded fontSize="small"/></IconButton>}><ListItemText primary={`${fmt(x.date)}${x.status==='slip'?' · slip':''}${simple?'':` · ${times(x.count||1)}`}`} secondary={x.note||'No note'}/></ListItem>)}</List></>:<Typography variant="body2" color="text.secondary" sx={{mt:1}}>No notes or slips yet.</Typography>}</Pane>
+    <Pane id={tid} name="Notes & slips">{log.length>0?<><Typography variant="subtitle2" sx={{mt:1}}>Notes and slips</Typography><DataTable rowKey="date" rows={log} minColWidth={84} actions={x=><IconButton size="small" aria-label="Remove entry" onClick={()=>clear(s,x.date)}><DeleteRounded fontSize="small"/></IconButton>} columns={[{label:'Date',render:x=>fmt(x.date)},{label:'Entry',render:x=>x.status==='slip'?'Slip':simple?'Done':times(x.count||1)},{label:'Note',render:x=>x.note||'–'}]}/></>:<Typography variant="body2" color="text.secondary" sx={{mt:1}}>No notes or slips yet.</Typography>}</Pane>
    </Card>})}</Box>
   {!rows.length&&<Typography color="text.secondary">Nothing here yet. Add your first tracker in the Add new tab.</Typography>}</Pane>
   {extraTab&&<Pane id={tid} name={extraTab}>{extraNode}</Pane>}

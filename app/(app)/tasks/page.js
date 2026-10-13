@@ -15,8 +15,8 @@ export default function Tasks(){
  const D=useMemo(()=>lastDays(14),[]),T=D[13];
  const [lists,setLists]=useState([]),[tasks,setTasks]=useState([]),[log,setLog]=useState({}),[doneMap,setDoneMap]=useState({}),[cur,setCur]=useState(0),[nl,setNl]=useState(''),[f,setF]=useState(blank),[sel,setSel]=useState(null),[openL,setOpenL]=useState(false),[ed,setEd]=useState({}),[cfm,setCfm]=useState(null);
  const load=useCallback(async()=>{
-  const[a,b,c]=await Promise.all([supabase.from('task_lists').select('*').order('created_at'),supabase.from('tasks').select('*').order('created_at'),supabase.from('task_log').select('task_id,date').gte('date',D[0])]);
-  setLists(a.data||[]);setTasks(b.data||[]);const m={};(c.data||[]).forEach(r=>m[r.task_id+r.date]=1);setLog(m);const nr=(b.data||[]).filter(t=>t.cycle==='todo'||t.cycle==='once').map(t=>t.id);if(nr.length){const l2=await supabase.from('task_log').select('task_id,date').in('task_id',nr);setDoneMap(Object.fromEntries((l2.data||[]).map(r=>[r.task_id,r.date])))}else setDoneMap({});rescheduleSoon()},[D]);
+  const[a,b,c,e]=await Promise.all([supabase.from('task_lists').select('*').order('created_at'),supabase.from('tasks').select('*').order('created_at'),supabase.from('task_log').select('task_id,date').gte('date',D[0]),supabase.from('task_log').select('task_id,date,tasks!inner(cycle)').in('tasks.cycle',['todo','once'])]);
+  setLists(a.data||[]);setTasks(b.data||[]);const m={};(c.data||[]).forEach(r=>m[r.task_id+r.date]=1);setLog(m);setDoneMap(Object.fromEntries((e.data||[]).map(r=>[r.task_id,r.date])));rescheduleSoon()},[D]);
  useEffect(()=>{load()},[load]);
  const L=lists[cur],mine=tasks.filter(t=>L&&t.list_id===L.id),set=(k,v)=>setF(p=>({...p,[k]:v}));
  const addList=async()=>{if(!nl.trim())return;await supabase.from('task_lists').insert({name:nl.trim()});setNl('');await load();setCur(lists.length)};

@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState,useCallback} from 'react';
-import {Box,Card,Typography,Stack,Button,TextField,MenuItem,Chip,IconButton,Menu,ListSubheader,Dialog,DialogTitle,DialogContent,DialogActions,ToggleButton,ToggleButtonGroup,Table,TableHead,TableRow,TableCell,TableBody,InputAdornment,Skeleton} from '@mui/material';
+import {Box,Card,Typography,Stack,Button,TextField,MenuItem,Chip,IconButton,Menu,ListSubheader,Dialog,DialogTitle,DialogContent,DialogActions,ToggleButton,ToggleButtonGroup,InputAdornment,Skeleton} from '@mui/material';
 import AddRounded from '@mui/icons-material/AddRounded';
 import SettingsRounded from '@mui/icons-material/SettingsRounded';
 import SearchRounded from '@mui/icons-material/SearchRounded';
@@ -8,6 +8,7 @@ import MoreVertRounded from '@mui/icons-material/MoreVertRounded';
 import {TabBar,Pane} from '@/components/Tabs';
 import {usePaged,Pager} from '@/components/Pager';
 import OfficeSettings from '@/components/OfficeSettings';
+import DataTable from '@/components/DataTable';
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
 import {PRI,DEF_COLS,DEF_ENVS,between,fmtD,isOverdue} from '@/lib/office';
@@ -15,9 +16,12 @@ const when=s=>new Date(s).toLocaleString('en-IN',{day:'numeric',month:'short',ho
 const tint=c=>({bgcolor:`${c}26`,color:'text.primary',fontWeight:600});
 function ListView({rows,colOf,envOf,open}){
  const pg=usePaged(rows,20,rows.length);
- return <Card sx={{p:2.5}}><Box sx={{overflowX:'auto'}}><Table size="small"><TableHead><TableRow><TableCell>Task</TableCell><TableCell>Status</TableCell><TableCell>Environment</TableCell><TableCell>Priority</TableCell><TableCell>Due</TableCell></TableRow></TableHead>
-  <TableBody>{pg.slice.map(t=>{const c=colOf(t.column_id),e=envOf(t.env_id),p=PRI.find(x=>x[0]===t.priority);return <TableRow key={t.id} hover sx={{cursor:'pointer'}} onClick={()=>open(t)}><TableCell sx={{fontWeight:600}}>{t.title}</TableCell><TableCell>{c&&<Chip size="small" label={c.name} sx={tint(c.color)}/>}</TableCell><TableCell>{e?<Chip size="small" label={e.name} sx={tint(e.color)}/>:'–'}</TableCell><TableCell>{p?.[1]}</TableCell><TableCell sx={{color:isOverdue(t.due_date,c?.is_done)?'error.main':undefined,whiteSpace:'nowrap'}}>{fmtD(t.due_date)||'–'}</TableCell></TableRow>})}
-   {!rows.length&&<TableRow><TableCell colSpan={5}><Typography color="text.secondary">No tasks match.</Typography></TableCell></TableRow>}</TableBody></Table></Box><Pager pg={pg}/></Card>}
+ return <Card sx={{p:2.5}}><DataTable rows={pg.slice} onRowClick={open} empty="No tasks match." columns={[
+  {label:'Task',render:t=>t.title},
+  {label:'Status',render:t=>{const c=colOf(t.column_id);return c?<Chip size="small" label={c.name} sx={{...tint(c.color),maxWidth:'100%'}}/>:'–'}},
+  {label:'Environment',render:t=>{const e=envOf(t.env_id);return e?<Chip size="small" label={e.name} sx={{...tint(e.color),maxWidth:'100%'}}/>:'–'}},
+  {label:'Priority',render:t=>PRI.find(x=>x[0]===t.priority)?.[1]||''},
+  {label:'Due',render:t=>fmtD(t.due_date)||'–'}]}/><Pager pg={pg}/></Card>}
 function Activity({events}){
  const pg=usePaged(events,20);
  return <Card sx={{p:2.5}}><Typography variant="h6">Activity</Typography><Typography variant="body2" color="text.secondary" sx={{mb:1}}>Every time a task is created or moves between statuses and environments.</Typography>
@@ -26,10 +30,9 @@ function Activity({events}){
 export default function Office(){
  const [cols,setCols]=useState([]),[envs,setEnvs]=useState([]),[tasks,setTasks]=useState([]),[events,setEvents]=useState([]),[q,setQ]=useState(''),[envF,setEnvF]=useState('all'),[dlg,setDlg]=useState(null),[sets,setSets]=useState(false),[menu,setMenu]=useState(null),[drag,setDrag]=useState(null),[over,setOver]=useState(null),[ready,setReady]=useState(false),seeded=useRef(false);
  const load=useCallback(async()=>{
-  const get=()=>Promise.all([supabase.from('office_columns').select('*').order('position'),supabase.from('office_envs').select('*').order('position')]);
-  let[a,b]=await get();
-  if(!a.data?.length&&!seeded.current){seeded.current=true;await supabase.from('office_columns').insert(DEF_COLS.map((c,i)=>({...c,position:i})));await supabase.from('office_envs').insert(DEF_ENVS.map((e,i)=>({...e,position:i})));[a,b]=await get()}
-  const[t,ev]=await Promise.all([supabase.from('office_tasks').select('*').order('position').limit(1000),supabase.from('office_task_events').select('*,office_tasks(title)').order('created_at',{ascending:false}).limit(300)]);
+  const cq=()=>supabase.from('office_columns').select('*').order('position'),eq=()=>supabase.from('office_envs').select('*').order('position');
+  let[a,b,t,ev]=await Promise.all([cq(),eq(),supabase.from('office_tasks').select('*').order('position').limit(1000),supabase.from('office_task_events').select('*,office_tasks(title)').order('created_at',{ascending:false}).limit(300)]);
+  if(!a.data?.length&&!seeded.current){seeded.current=true;await supabase.from('office_columns').insert(DEF_COLS.map((c,i)=>({...c,position:i})));await supabase.from('office_envs').insert(DEF_ENVS.map((e,i)=>({...e,position:i})));[a,b]=await Promise.all([cq(),eq()])}
   setCols(a.data||[]);setEnvs(b.data||[]);setTasks(t.data||[]);setEvents(ev.data||[]);setReady(true)},[]);
  useEffect(()=>{load()},[load]);
  const colOf=id=>cols.find(c=>c.id===id),envOf=id=>envs.find(e=>e.id===id),now=()=>new Date().toISOString();

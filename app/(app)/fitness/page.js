@@ -7,6 +7,7 @@ import Metrics from '@/components/Metrics';
 import BmiCard from '@/components/BmiCard';
 import {TabBar,Pane} from '@/components/Tabs';
 import {usePaged,Pager} from '@/components/Pager';
+import DataTable from '@/components/DataTable';
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
 import {iso} from '@/lib/due';
@@ -42,9 +43,8 @@ export default function Fitness(){
     {sets.length>0&&<Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{mt:2}}>{sets.map((s,i)=><Chip key={i} label={`Set ${i+1}: ${s.r}${cardio?' min':' reps'} · ${s.w} ${u}`} onDelete={()=>setSets(sets.filter((_,q)=>q!==i))}/>)}</Stack>}
     {sets.length>0&&<Button variant="contained" fullWidth sx={{mt:2}} onClick={save}>Save {ex} on {fd(wd)}</Button>}</Card>
    <Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:1}}>Workout log</Typography>
-    {dates.map(d=><Box key={d} sx={{py:1.5,borderTop:1,borderColor:'divider'}}><Typography fontWeight={700} sx={{mb:.5}}>{fdl(d)}</Typography>
-     {pgW.slice.filter(x=>x.date===d).map(x=><Box key={x.id} sx={{display:'flex',alignItems:'center',gap:1,py:.5}}><Box sx={{flex:1}}><Typography><b>{x.exercise}</b> <Typography component="span" variant="body2" color="text.secondary">{x.muscle_group}</Typography></Typography><Typography variant="body2" color="text.secondary">{x.sets.map((s,i)=>x.muscle_group==='Cardio'?`${s.r} min${s.w?` · ${s.w} km`:''}`:`${s.r} × ${s.w} kg`).join('  ·  ')}</Typography></Box><IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton></Box>)}</Box>)}
-    {!dates.length&&<Typography color="text.secondary" sx={{py:2}}>No workouts logged yet.</Typography>}<Pager pg={pgW}/></Card></Stack></Pane>
+    <DataTable rows={pgW.slice} empty="No workouts logged yet." actions={x=><IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton>}
+     columns={[{label:'Date',render:x=>fdl(x.date)},{label:'Exercise',render:x=>x.exercise},{label:'Category',render:x=>x.muscle_group},{label:'Sets',render:x=>x.sets.map(s=>x.muscle_group==='Cardio'?`${s.r} min${s.w?` · ${s.w} km`:''}`:`${s.r} × ${s.w} kg`).join('  ·  ')}]}/><Pager pg={pgW}/></Card></Stack></Pane>
   <Pane id="fitness" name="Progress"><Stack spacing={3}>
    <Card sx={{p:2.5}}><TextField select label="Category" value={pg} onChange={e=>setPg(e.target.value)} sx={{minWidth:220}}>{Object.keys(LIB).map(c=><MenuItem key={c} value={c}>{c}</MenuItem>)}</TextField>
     <Typography variant="body2" color="text.secondary" sx={{mt:1}}>Every exercise you have logged under {pg}, with your best result and a chart by date.</Typography></Card>
