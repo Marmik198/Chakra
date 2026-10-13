@@ -1,5 +1,4 @@
 # Chakra
-Next.js 14 + Material UI + Supabase (email OTP login, Postgres with row level security).
 
 ## Setup
 1. Create a project at supabase.com.
