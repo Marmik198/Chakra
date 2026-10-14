@@ -9,6 +9,7 @@ import LocalFireDepartmentRounded from '@mui/icons-material/LocalFireDepartmentR
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import {TabBar,Pane} from '@/components/Tabs';
 import DataTable from '@/components/DataTable';
+import EditRounded from '@mui/icons-material/EditRounded';
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
 import {iso} from '@/lib/due';
@@ -56,7 +57,7 @@ export default function Trackers({section,title,sub,example='e.g. Days not eaten
     </Pane>
     <Pane id={tid} name="History"><Box sx={{display:'grid',gridTemplateColumns:'repeat(14,1fr)',gap:.5,mt:1}}>{cells.map(d=>{const x=st.map.get(d),v=x?.status,n=x?.count||1;return <Tooltip key={d} title={v?`${fmt(d)} · ${v==='clean'?(simple?'done':'clean'):'slip'}${simple?'':` · ${times(n)}`}${x?.note?` · ${x.note.length>60?x.note.slice(0,60)+'…':x.note}`:''}`:`${fmt(d)} · not logged`}><Box component="button" aria-label={`${fmt(d)} ${v?v+(simple?'':', '+times(n)):'not logged'}`} onClick={()=>setDlg({s,date:d,mode:'day',status:x?.status||'none',count:x?.count||1,note:x?.note||''})} sx={{aspectRatio:'1',border:d===T?'2px solid':0,borderColor:'primary.main',borderRadius:1,p:0,cursor:'pointer',bgcolor:col[v]||'divider'}}/></Tooltip>})}</Box>
      <Typography variant="caption" color="text.secondary">Last 6 weeks. Hover a day to see its date{simple?'':' and count'}. Tap a day to log it, change it or add a note.</Typography></Pane>
-    <Pane id={tid} name="Notes & slips">{log.length>0?<><Typography variant="subtitle2" sx={{mt:1}}>Notes</Typography><DataTable rowKey="date" rows={log} minColWidth={84} actions={x=><IconButton size="small" aria-label="Remove entry" onClick={()=>clear(s,x.date)}><DeleteRounded fontSize="small"/></IconButton>} columns={[{label:'Date',render:x=>fmt(x.date)},{label:'Entry',render:x=>x.status==='slip'?'Slip':simple?'Done':times(x.count||1)},{label:'Note',render:x=>x.note}]}/></>:<Typography variant="body2" color="text.secondary" sx={{mt:1}}>No notes yet. Add one when you log a slip, or tap a day in History.</Typography>}</Pane>
+    <Pane id={tid} name="Notes & slips">{log.length>0?<><Typography variant="subtitle2" sx={{mt:1}}>Notes</Typography><DataTable rowKey="date" rows={log} minColWidth={84} actionsWidth={96} actions={x=><Stack direction="row" spacing={.5}><IconButton size="small" aria-label="Edit note" onClick={()=>setDlg({s,date:x.date,mode:'day',status:x.status,count:x.count||1,note:x.note||''})}><EditRounded fontSize="small"/></IconButton><IconButton size="small" aria-label="Remove entry" onClick={()=>clear(s,x.date)}><DeleteRounded fontSize="small"/></IconButton></Stack>} columns={[{label:'Date',render:x=>fmt(x.date)},{label:'Entry',render:x=>x.status==='slip'?'Slip':simple?'Done':times(x.count||1)},{label:'Note',render:x=>x.note}]}/></>:<Typography variant="body2" color="text.secondary" sx={{mt:1}}>No notes yet. Add one when you log a slip, or tap a day in History.</Typography>}</Pane>
    </Card>})}</Box>
   {!rows.length&&<Typography color="text.secondary">Nothing here yet. Add your first tracker in the Add new tab.</Typography>}</Pane>
   {extraTab&&<Pane id={tid} name={extraTab}>{extraNode}</Pane>}

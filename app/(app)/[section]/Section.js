@@ -8,6 +8,8 @@ import {usePaged,Pager} from '@/components/Pager';
 import SettingsRounded from '@mui/icons-material/SettingsRounded';
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded';
 import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded';
+import EditDialog from '@/components/EditDialog';
+import EditRounded from '@mui/icons-material/EditRounded';
 import DataTable from '@/components/DataTable';
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
@@ -24,7 +26,7 @@ const fday=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',mon
 export default function Section({section:ps}){
  const params=useParams(),section=ps||params.section,cfg=CFG[section],seeded=useRef({});
  const lab=c=>cfg?.manage?c.name:(cfg?.alias?.[c.name]||c.name);
- const [cols,setCols]=useState([]),[cur,setCur]=useState(0),[allRows,setRows]=useState([]),[view,setView]=useState('done'),[dn,setDn]=useState(null),[f,setF]=useState({title:'',note:'',rating:0,cost:'',episodes:''}),[nc,setNc]=useState(''),[all,setAll]=useState([]),[mg,setMg]=useState(false),[ed,setEd]=useState({}),[cfm,setCfm]=useState(null),[cnt,setCnt]=useState({});
+ const [cols,setCols]=useState([]),[cur,setCur]=useState(0),[allRows,setRows]=useState([]),[view,setView]=useState('done'),[dn,setDn]=useState(null),[f,setF]=useState({title:'',note:'',rating:0,cost:'',episodes:''}),[nc,setNc]=useState(''),[all,setAll]=useState([]),[mg,setMg]=useState(false),[editRow,setEditRow]=useState(null),[ed,setEd]=useState({}),[cfm,setCfm]=useState(null),[cnt,setCnt]=useState({});
  const idx=c=>{const i=cfg.c.indexOf(lab(c));return i<0?99:i};
  const load=useCallback(async()=>{if(!cfg)return;const get=()=>supabase.from('collections').select('*').eq('section',section);let{data}=await get();
   if(cfg.manage){
@@ -67,8 +69,8 @@ export default function Section({section:ps}){
     {cfg.rate&&view!=='want'&&<Rating value={f.rating} onChange={(_,v)=>setF({...f,rating:v||0})}/>}
     {cfg.cost&&<TextField label="Cost ₹" type="number" value={f.cost} onChange={e=>setF({...f,cost:e.target.value})} sx={{width:110}}/>}
     <Button variant="contained" onClick={add}>{view==='want'?`Add to ${WL[1].toLowerCase()}`:'Add'}</Button></Stack>
-   <DataTable rows={pg.slice} minColWidth={cfg.prog?150:110} empty="Nothing here yet. Add your first entry above." actionsWidth={view==='want'?200:56}
-    actions={x=><Stack direction="row" spacing={.5} alignItems="center">{view==='want'&&<Button size="small" variant="outlined" onClick={()=>setDn({x,rating:0,episodes:'',note:x.note||''})}>Mark as {WL[2]}</Button>}<IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton></Stack>}
+   <DataTable rows={pg.slice} minColWidth={cfg.prog?150:110} empty="Nothing here yet. Add your first entry above." actionsWidth={view==='want'?240:96}
+    actions={x=><Stack direction="row" spacing={.5} alignItems="center">{view==='want'&&<Button size="small" variant="outlined" onClick={()=>setDn({x,rating:0,episodes:'',note:x.note||''})}>Mark as {WL[2]}</Button>}<IconButton size="small" aria-label="Edit" onClick={()=>setEditRow(x)}><EditRounded fontSize="small"/></IconButton><IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton></Stack>}
     columns={[{label:'Title',render:x=>x.title},{label:'Date',render:x=>fday(x.date)},
      ...(cfg.rate&&view!=='want'?[{label:'Rating',render:x=>x.rating?<Rating size="small" readOnly value={x.rating}/>:'–'}]:[]),
      ...(isSeries&&view!=='want'?[{label:'Episodes',align:'right',render:x=>x.episodes?String(x.episodes):'–'}]:[]),
@@ -95,4 +97,18 @@ export default function Section({section:ps}){
     {cols.length<=1&&<Typography variant="caption" color="text.secondary">Keep at least one list.</Typography>}
     <Box sx={{pt:1.5,borderTop:1,borderColor:'divider'}}><Typography variant="subtitle2" sx={{mb:1}}>Add a new list</Typography><Stack direction="row" spacing={1}><TextField fullWidth label={section==='outings'?'List name, e.g. Weekend trips':'List name, e.g. Podcasts'} value={nc} onChange={e=>setNc(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addCol()}/><Button variant="contained" onClick={addCol}>Add</Button></Stack></Box></Stack></DialogContent>
    <DialogActions><Button onClick={()=>{setMg(false);setCfm(null)}}>Done</Button></DialogActions></Dialog>
-  </Stack>}
+  <EditDialog open={!!editRow} title={`Edit ${cfg.t==='Journal'?'entry':'item'}`} initial={editRow&&{title:editRow.title,date:editRow.date,collection_id:editRow.collection_id,status:editRow.status||'done',rating:editRow.rating||0,episodes:editRow.episodes||0,cost:editRow.cost??'',progress:editRow.progress||0,note:editRow.note||''}}
+   fields={[{key:'title',label:'Title',required:true,span:true},{key:'date',label:'Date',type:'date'},
+    ...(cols.length>1?[{key:'collection_id',label:'List',type:'select',options:cols.map(c=>[c.id,lab(c)])}]:[]),
+    ...(cfg.wish?[{key:'status',label:'Status',type:'select',options:[['done',WL?.[0]||'Done'],['want',WL?.[1]||'Want to do']]}]:[]),
+    ...(cfg.rate?[{key:'rating',label:'Rating',type:'rating',show:v=>v.status!=='want'}]:[]),
+    {key:'episodes',label:'Episodes watched',type:'number',show:v=>v.status!=='want'&&cols.some(c=>c.id===v.collection_id&&/series/i.test(lab(c)))},
+    ...(cfg.cost?[{key:'cost',label:'Cost (₹)',type:'number'}]:[]),
+    ...(cfg.prog?[{key:'progress',label:'Achieved (%)',type:'number'}]:[]),
+    {key:'note',label:'Note',type:'multiline'}]}
+   onSave={async v=>{const body={title:v.title.trim(),date:v.date||editRow.date,collection_id:v.collection_id,note:v.note||null};
+    if(cfg.wish)body.status=v.status;if(cfg.rate)body.rating=v.status==='want'?null:(v.rating||null);
+    if(cols.some(c=>c.id===v.collection_id&&/series/i.test(lab(c))))body.episodes=v.status==='want'?0:(+v.episodes||0);
+    if(cfg.cost)body.cost=v.cost===''||v.cost==null?null:+v.cost;if(cfg.prog)body.progress=Math.max(0,Math.min(100,+v.progress||0));
+    const r=await supabase.from('collection_entries').update(body).eq('id',editRow.id);if(r?.error)throw new Error('Could not save. Try again.');setEditRow(null);loadRows()}} onClose={()=>setEditRow(null)}/>
+ </Stack>}

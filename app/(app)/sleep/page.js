@@ -5,6 +5,8 @@ import {BarChart} from '@/components/Charts';
 import DeleteRounded from '@mui/icons-material/DeleteRounded';
 import {TabBar,Pane} from '@/components/Tabs';
 import {usePaged,Pager} from '@/components/Pager';
+import EditDialog from '@/components/EditDialog';
+import EditRounded from '@mui/icons-material/EditRounded';
 import DataTable from '@/components/DataTable';
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
@@ -20,6 +22,7 @@ export default function Sleep(){
  const saveR=(a,b)=>{setGmin(a);setGmax(b);try{localStorage.setItem('chakra-sleep-range',JSON.stringify([a,b]))}catch{}};
  const load=useCallback(async()=>{const{data}=await supabase.from('sleep_logs').select('*').gte('date',from).order('date');setRows((data||[]).map(r=>({...r,bedtime:t5(r.bedtime),wake_time:t5(r.wake_time)})))},[from]);
  useEffect(()=>{load()},[load]);
+ const [editR,setEditR]=useState(null);
  const save=async()=>{await supabase.from('sleep_logs').upsert({date:f.date,bedtime:f.bed,wake_time:f.wake,minutes:dur(f.bed,f.wake),quality:f.q||null,note:f.note},{onConflict:'user_id,date'});setF({...f,note:''});load()};
  const del=r=>undoable('Night',()=>supabase.from('sleep_logs').delete().eq('id',r.id),{id:r.id,hide:()=>setRows(r=>r.filter(y=>y.id!==r.id)),restore:load});
  const pgR=usePaged([...rows].reverse());
@@ -47,6 +50,9 @@ export default function Sleep(){
     <Box sx={{display:'flex',gap:.5,height:190,pl:5.5,mt:1.5,position:'relative'}}>{[['20:00',0],['00:00',25],['04:00',50],['08:00',75],['12:00',100]].map(([t,p])=><Typography key={t} variant="caption" color="text.secondary" sx={{position:'absolute',left:0,top:`calc(${p}% - 9px)`}}>{t}</Typography>)}
      {l14.map(r=>{const w=winPos(r.bedtime,r.minutes);return <Box key={r.id} title={`${r.bedtime} to ${r.wake_time}`} sx={{flex:1,position:'relative',bgcolor:'action.hover',borderRadius:1}}><Box sx={{position:'absolute',left:2,right:2,top:`${w.top}%`,height:`${w.h}%`,borderRadius:1,bgcolor:BLUE}}/></Box>})}</Box></Card></Box>
   </Pane><Pane id="sleep" name="History"><Card sx={{p:2.5}}><Typography variant="h6">Recent nights</Typography>
-   <DataTable rows={pgR.slice} empty="No nights logged yet." actions={r=><IconButton size="small" aria-label="Delete" onClick={()=>del(r)}><DeleteRounded fontSize="small"/></IconButton>}
+   <DataTable rows={pgR.slice} empty="No nights logged yet." actionsWidth={96} actions={r=><Stack direction="row" spacing={.5}><IconButton size="small" aria-label="Edit" onClick={()=>setEditR(r)}><EditRounded fontSize="small"/></IconButton><IconButton size="small" aria-label="Delete" onClick={()=>del(r)}><DeleteRounded fontSize="small"/></IconButton></Stack>}
     columns={[{label:'Date',render:r=>fday(r.date)},{label:'Bedtime',render:r=>String(r.bedtime).slice(0,5)},{label:'Wake up',render:r=>String(r.wake_time).slice(0,5)},{label:'Slept',render:r=>`${hm(r.minutes)} · ${(r.minutes/90).toFixed(1)} cycles`},{label:'Quality',render:r=>r.quality?<Rating size="small" readOnly value={r.quality}/>:'–'},{label:'Note',render:r=>r.note||'–'}]}/><Pager pg={pgR}/></Card>
- </Pane></Stack>}
+ </Pane><EditDialog open={!!editR} title="Edit night" initial={editR&&{date:editR.date,bed:String(editR.bedtime).slice(0,5),wake:String(editR.wake_time).slice(0,5),q:editR.quality||0,note:editR.note||''}}
+   fields={[{key:'date',label:'Date',type:'date',required:true},{key:'bed',label:'Bedtime',type:'time',required:true},{key:'wake',label:'Wake up',type:'time',required:true},{key:'q',label:'Quality',type:'rating'},{key:'note',label:'Note',type:'multiline'}]}
+   onSave={async v=>{const r=await supabase.from('sleep_logs').update({date:v.date,bedtime:v.bed,wake_time:v.wake,minutes:dur(v.bed,v.wake),quality:v.q||null,note:v.note||null}).eq('id',editR.id);if(r?.error)throw new Error('Could not save. Is another night already logged on that date?');setEditR(null);load()}} onClose={()=>setEditR(null)}/>
+ </Stack>}

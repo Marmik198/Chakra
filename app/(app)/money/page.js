@@ -11,6 +11,8 @@ import ChevronLeftRounded from '@mui/icons-material/ChevronLeftRounded';
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded';
 import {usePaged,Pager} from '@/components/Pager';
 import Clamp from '@/components/Clamp';
+import EditDialog from '@/components/EditDialog';
+import EditRounded from '@mui/icons-material/EditRounded';
 import DataTable from '@/components/DataTable';
 import ColorField from '@/components/ColorField';
 const fday=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
@@ -27,6 +29,7 @@ export default function Money(){
  const seeded=useRef(false),thisMonth=iso(new Date()).slice(0,7),[month,setMonth]=useState(thisMonth),[yy,mm]=month.split('-').map(Number),nDays=new Date(yy,mm,0).getDate(),mStart=`${month}-01`,mEnd=`${month}-${String(nDays).padStart(2,'0')}`,D=useMemo(()=>Array.from({length:nDays},(_,i)=>`${month}-${String(i+1).padStart(2,'0')}`),[month,nDays]),mLabel=new Date(yy,mm-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'}),shift=n=>{const d=new Date(yy,mm-1+n,1);setMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)};
  const [rows,setRows]=useState([]),[splits,setSplits]=useState([]),[tags,setTags]=useState([]),[dv,setDv]=useState('Expense'),[f,setF]=useState({type:'Expense',tag:'Food & Dining',amount:'',note:'',date:iso(new Date()),source:'UPI'}),[s,setS]=useState({who:'',amount:'',direction:'owes me',note:''}),[nt,setNt]=useState({name:'',kind:'expense',color:'#6A4DF4',description:''});
  const srcData=useMemo(()=>bySource(rows,dv),[rows,dv]);
+ const [editE,setEditE]=useState(null),[editS,setEditS]=useState(null);
  // one row per tag or source: dot, name, share, amount and a bar showing its share
  const shares=(list,tip)=>list.map(d=>{const pc=total?d.value/total*100:0;const row=<Box key={d.name}><Box sx={{display:'flex',alignItems:'center'}}><Dot c={d.color}/><Clamp sx={{flex:1}}>{d.name}</Clamp><Typography variant="body2" color="text.secondary" sx={{mr:1.5}}>{pc.toFixed(0)}%</Typography><Typography fontWeight={700}>{rs(d.value)}</Typography></Box><Box sx={{height:6,borderRadius:3,bgcolor:'divider',mt:.75}}><Box sx={{height:'100%',width:`${pc}%`,borderRadius:3,bgcolor:d.color}}/></Box></Box>;return tip?<Tooltip key={d.name} title={d.description} placement="left">{row}</Tooltip>:row});
  const loadTags=useCallback(async()=>{let{data}=await supabase.from('money_tags').select('*').order('created_at',{ascending:true,nullsFirst:true});
@@ -80,7 +83,7 @@ export default function Money(){
     <TextField label="What is this tag for?" value={nt.description} onChange={e=>setNt({...nt,description:e.target.value})} sx={{flex:1,minWidth:200}}/>
     <Button variant="contained" onClick={addTag}>Add tag</Button></Stack></Card>
   </Pane><Pane id="money" name="Overview"><Card sx={{p:2.5}}><Typography variant="h6">Entries · {mLabel}</Typography>
-   <DataTable rows={pgE.slice} empty="No entries this month." actions={x=><IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton>} columns={[
+   <DataTable rows={pgE.slice} empty="No entries this month." actionsWidth={96} actions={x=><Stack direction="row" spacing={.5}><IconButton size="small" aria-label="Edit" onClick={()=>setEditE(x)}><EditRounded fontSize="small"/></IconButton><IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton></Stack>} columns={[
      {label:'Date',render:x=>fday(x.date)},
      {label:'Tag',render:x=>{const t=tagOf(x.type,x.category);return <Tooltip title={t?t.name:x.category||''}><Chip size="small" label={t?t.name:x.category||'Untagged'} sx={{maxWidth:'100%',bgcolor:`${t?.color||'#94A3B8'}33`,fontWeight:600}}/></Tooltip>}},
      {label:'Source',render:x=>SOURCES.find(z=>z[0]===x.source)?.[1]||x.source||'–'},
@@ -88,7 +91,7 @@ export default function Money(){
      {label:'Amount',align:'right',render:x=><Typography fontWeight={700} color={x.type==='Income'?'success.main':'error.main'}>{x.type==='Income'?'+':'−'}{rs(+x.amount)}</Typography>}]}/><Pager pg={pgE}/></Card>
   </Pane><Pane id="money" name="Splits"><Card sx={{p:2.5}}><Typography variant="h6">Split tracker</Typography>
    <Typography variant="body2" color="text.secondary" sx={{mb:1}}>Paying for someone is logged as an expense. When they pay you back, it is logged as income.</Typography>
-   <DataTable rows={splits} empty="Nothing to settle." actionsWidth={110} actions={x=><Button size="small" variant="outlined" onClick={()=>settle(x)}>{x.direction==='owes me'?'Received':'I paid'}</Button>} columns={[
+   <DataTable rows={splits} empty="Nothing to settle." actionsWidth={170} actions={x=><Stack direction="row" spacing={.5} alignItems="center"><IconButton size="small" aria-label="Edit" onClick={()=>setEditS(x)}><EditRounded fontSize="small"/></IconButton><Button size="small" variant="outlined" onClick={()=>settle(x)}>{x.direction==='owes me'?'Received':'I paid'}</Button></Stack>} columns={[
      {label:'Person',render:x=>x.who},
      {label:'Who owes',render:x=>x.direction==='owes me'?'They owe you':'You owe them'},
      {label:'Amount',align:'right',render:x=>rs(+x.amount)},
@@ -99,4 +102,14 @@ export default function Money(){
     <TextField label="₹" type="number" value={s.amount} onChange={e=>setS({...s,amount:e.target.value})} sx={{width:110}}/>
     <TextField label="For what" value={s.note} onChange={e=>setS({...s,note:e.target.value})} sx={{flex:1,minWidth:140}}/>
     <Button variant="contained" onClick={addSplit}>Add</Button></Stack></Card>
- </Pane></Stack>}
+ </Pane><EditDialog open={!!editE} title="Edit entry" initial={editE&&{type:editE.type,category:editE.category,amount:editE.amount,date:editE.date,source:editE.source||'UPI',note:editE.note||''}}
+   fields={[{key:'type',label:'Type',type:'select',options:[['Expense','Expense'],['Income','Income']]},
+    {key:'category',label:'Tag',type:'select',options:v=>{const l=tags.filter(t=>t.kind===String(v.type).toLowerCase()).map(t=>[t.name,t.name]);return !v.category||l.some(o=>o[0]===v.category)?l:[[v.category,v.category],...l]}},
+    {key:'amount',label:'Amount (₹)',type:'number',required:true},{key:'date',label:'Date',type:'date',required:true},
+    {key:'source',label:'Source',type:'select',options:SOURCES.map(z=>[z[0],z[1]])},{key:'note',label:'Note',type:'multiline'}]}
+   adjust={(k,val,v)=>k==='type'?{...v,type:val,category:tags.find(t=>t.kind===String(val).toLowerCase())?.name||''}:v}
+   onSave={async v=>{const a=+v.amount;if(!(a>0))throw new Error('Enter an amount above 0.');const r=await supabase.from('money_entries').update({type:v.type,category:v.category,amount:a,date:v.date,source:v.source,note:v.note||null}).eq('id',editE.id);if(r?.error)throw new Error('Could not save. Try again.');setEditE(null);load()}} onClose={()=>setEditE(null)}/>
+  <EditDialog open={!!editS} title="Edit split" initial={editS&&{who:editS.who,direction:editS.direction,amount:editS.amount,note:editS.note||''}}
+   fields={[{key:'who',label:'Person',required:true},{key:'direction',label:'Who owes',type:'select',options:[['owes me','I paid, they owe me'],['I owe','I owe them']]},{key:'amount',label:'Amount (₹)',type:'number',required:true},{key:'note',label:'Note',type:'multiline'}]}
+   onSave={async v=>{const a=+v.amount;if(!(a>0))throw new Error('Enter an amount above 0.');const r=await supabase.from('splits').update({who:v.who.trim(),direction:v.direction,amount:a,note:v.note||null}).eq('id',editS.id);if(r?.error)throw new Error('Could not save. Try again.');setEditS(null);load()}} onClose={()=>setEditS(null)}/>
+ </Stack>}
