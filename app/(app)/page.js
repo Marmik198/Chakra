@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState,useCallback} from 'react';
 import {Box,Card,Typography,Checkbox,Chip,CircularProgress,Stack,List,ListItem,ListItemIcon,ListItemText,TextField,Button,Skeleton} from '@mui/material';
+import DataTable from '@/components/DataTable';
 import {supabase} from '@/lib/supabase';
 import {AlertsPrompt} from '@/components/Reminders';
 import {isDue,iso} from '@/lib/due';
@@ -29,17 +30,18 @@ export default function Today(){
     <CircularProgress variant="determinate" value={pct} size={88} thickness={5} sx={{color:'#2DD4BF',position:'absolute',left:0}}/>
     <Box sx={{position:'absolute',inset:0,display:'grid',placeItems:'center'}}><Typography fontWeight={800}>{pct}%</Typography></Box></Box>
    <Box><Typography variant="h4">{n} of {tasks.length}</Typography><Typography sx={{opacity:.8}}>due today, completed</Typography></Box></Card>
-  <Card><Typography variant="h6" sx={{p:2.5,pb:0}}>Due today</Typography>
-   <List>{tasks.length?tasks.map(t=><ListItem key={t.id} divider secondaryAction={<Chip size="small" label={t.task_lists?.name||'No list'}/>}>
-    <ListItemIcon><Checkbox edge="start" checked={done.has(t.id)} onChange={()=>toggle(t)}/></ListItemIcon>
-    <ListItemText primary={t.title} secondary={t.remind_time?t.remind_time.slice(0,5)+(t.remind?' · reminder on':''):null} sx={{textDecoration:done.has(t.id)?'line-through':'none'}}/></ListItem>)
-    :<ListItem><ListItemText secondary="Nothing due today. Create repeating tasks in Tasks."/></ListItem>}</List></Card>
+  <Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:1}}>Due today</Typography>
+   <DataTable rows={tasks} minColWidth={84} empty="Nothing due today. Create repeating tasks in Tasks." strike={t=>done.has(t.id)}
+    leading={t=><Checkbox checked={done.has(t.id)} onChange={()=>toggle(t)} inputProps={{'aria-label':`Mark ${t.title} as done`}}/>}
+    columns={[{label:'Task',render:t=>t.title},{label:'List',render:t=>t.task_lists?.name||'No list'},{label:'Time',render:t=>t.remind_time?`${t5(t.remind_time)}${t.remind?' · reminder on':''}`:'–'}]}/></Card>
   {todoList.length>0&&<Card><Box sx={{display:'flex',justifyContent:'space-between',p:2.5,pb:0}}><Typography variant="h6">To-dos and one-time tasks</Typography><Typography variant="body2" color="text.secondary">{todoList.filter(t=>doneMap[t.id]).length} of {todoList.length} done</Typography></Box>
-   <List>{todoList.map(t=><ListItem key={t.id} divider secondaryAction={<Chip size="small" color={t.cycle==='once'&&t.start_date<T?'error':'default'} variant={t.cycle==='once'&&t.start_date<T?'filled':'outlined'} label={t.cycle==='once'?(t.start_date<T?`Overdue since ${fd(t.start_date)}`:`Due ${fd(t.start_date)}`):'No date'}/>}><ListItemIcon><Checkbox edge="start" checked={!!doneMap[t.id]} onChange={()=>toggleTodo(t)}/></ListItemIcon><ListItemText primary={t.title} secondary={t.task_lists?.name} sx={{textDecoration:doneMap[t.id]?'line-through':'none'}}/></ListItem>)}</List></Card>}
+   <Box sx={{px:2.5,pb:2.5}}><DataTable rows={todoList} minColWidth={84} strike={t=>!!doneMap[t.id]}
+    leading={t=><Checkbox checked={!!doneMap[t.id]} onChange={()=>toggleTodo(t)} inputProps={{'aria-label':`Mark ${t.title} as done`}}/>}
+    columns={[{label:'Task',render:t=>t.title},{label:'List',render:t=>t.task_lists?.name||'No list'},{label:'Due',render:t=><Chip size="small" color={t.cycle==='once'&&t.start_date<T?'error':'default'} variant={t.cycle==='once'&&t.start_date<T?'filled':'outlined'} label={t.cycle==='once'?(t.start_date<T?`Overdue since ${fd(t.start_date)}`:`Due ${fd(t.start_date)}`):'No date'} sx={{maxWidth:'100%'}}/>}]}/></Box></Card>}
   <Card><Box sx={{display:'flex',justifyContent:'space-between',p:2.5,pb:0}}><Typography variant="h6">Today&apos;s schedule</Typography><Typography variant="body2" color="text.secondary">{sched.filter(i=>sdone.has(i.id)).length} of {sched.length} done</Typography></Box>
-   <List>{sched.length?sched.map(i=><ListItem key={i.id} divider><ListItemIcon><Checkbox edge="start" checked={sdone.has(i.id)} onChange={()=>toggleS(i)}/></ListItemIcon>
-    <ListItemText primary={i.title} secondary={`${t5(i.start_time)}${i.end_time?' – '+t5(i.end_time):''}`} sx={{textDecoration:sdone.has(i.id)?'line-through':'none'}}/></ListItem>)
-    :<ListItem><ListItemText secondary="No timetable for today. Build one in Schedule."/></ListItem>}</List></Card>
+   <Box sx={{px:2.5,pb:2.5}}><DataTable rows={sched} minColWidth={84} empty="No timetable for today. Build one in Schedule." strike={i=>sdone.has(i.id)}
+    leading={i=><Checkbox checked={sdone.has(i.id)} onChange={()=>toggleS(i)} inputProps={{'aria-label':`Mark ${i.title} as done`}}/>}
+    columns={[{label:'Task',render:i=>i.title},{label:'Time',render:i=>`${t5(i.start_time)}${i.end_time?' – '+t5(i.end_time):''}`}]}/></Box></Card>
   <Box sx={{display:'grid',gap:2,gridTemplateColumns:{md:'1fr 1fr'}}}>
    {[['Daily win','Wins','What went well today?',win,setWin],['Daily learning','Learnings','What did you learn today?',lrn,setLrn]].map(([h,name,ph,v,set])=><Card key={name} sx={{p:2.5}}><Typography variant="h6" sx={{mb:1.5}}>{h}</Typography>
     <Stack direction="row" spacing={1}><TextField placeholder={ph} value={v} onChange={e=>set(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addJ(name,v,set)} fullWidth/><Button variant="contained" onClick={()=>addJ(name,v,set)}>Add</Button></Stack></Card>)}</Box>
