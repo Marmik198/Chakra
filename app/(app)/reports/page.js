@@ -35,7 +35,7 @@ export default function Reports(){
  useEffect(()=>{if(!valid)return;let on=true;setLoading(true);fetchRange(from,to).then(r=>{if(on){setEntries(r);setLoading(false)}});return()=>{on=false}},[from,to,valid]);
  const S=useMemo(()=>summarize(entries,tags),[entries,tags]),B=useMemo(()=>valid?buckets(entries,from,to):{mode:'day',list:[]},[entries,from,to,valid]);
  const days=valid?Math.round((new Date(to+'T00:00')-new Date(from+'T00:00'))/864e5)+1:1,exp=entries.filter(e=>e.type==='Expense'),inc=entries.filter(e=>e.type==='Income');
- const big=[...exp].sort((a,b)=>b.amount-a.amount).slice(0,5);
+ const bigAll=useMemo(()=>entries.filter(e=>e.type==='Expense').sort((a,b)=>+b.amount-+a.amount),[entries]),pgBig=usePaged(bigAll,10,`${from}${to}`);
  const dl=async()=>{setBusy(true);try{await downloadReport({from,to,entries,tags},isNative())}catch(e){toast('Could not create the PDF: '+(e?.message||'unknown error'))}setBusy(false)};
  const bm=Object.fromEntries(B.list.map(b=>[b.key,b]));
  return <Stack spacing={3}>
@@ -53,11 +53,12 @@ export default function Reports(){
    <Box sx={{display:'grid',gap:3,gridTemplateColumns:{md:'1fr 1fr'}}}>
     <Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:1}}>Top spending tags</Typography>{S.listExpense.slice(0,8).map(d=><Box key={d.name} sx={{my:1.25}}><Box sx={{display:'flex',justifyContent:'space-between'}}><Box sx={{display:'flex',alignItems:'center',minWidth:0,flex:1,mr:1.5}}><Dot c={d.color}/><Clamp sx={{typography:'body2'}}>{d.name}</Clamp></Box><Typography variant="body2" color="text.secondary">{rs(d.value)}</Typography></Box><LinearProgress variant="determinate" value={d.value/S.listExpense[0].value*100} sx={{height:8,borderRadius:4,mt:.5,'& .MuiLinearProgress-bar':{bgcolor:d.color}}}/></Box>)}{!S.listExpense.length&&<Typography color="text.secondary">No spending in this range.</Typography>}</Card>
     <Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:1}}>Biggest expenses</Typography>
-     <DataTable rows={big} minColWidth={84} empty="Nothing yet." columns={[
+     <Typography variant="caption" color="text.secondary" sx={{display:'block',mb:1}}>All {bigAll.length} {bigAll.length===1?'expense':'expenses'} in this period, largest first.</Typography>
+     <DataTable rows={pgBig.slice} minColWidth={84} empty="Nothing yet." columns={[
       {label:'Date',render:e=>new Date(e.date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})},
       {label:'Tag',render:e=>{const t=tagInfo(tags,e.type,e.category);return <Tooltip title={t.name}><Chip size="small" label={t.name} sx={{maxWidth:'100%',bgcolor:`${t.color}33`,fontWeight:600}}/></Tooltip>}},
       {label:'Note',render:e=>e.note||'–'},
-      {label:'Amount',align:'right',render:e=><Typography fontWeight={700}>{rs(+e.amount)}</Typography>}]}/></Card></Box></Stack></Pane>
+      {label:'Amount',align:'right',render:e=><Typography fontWeight={700}>{rs(+e.amount)}</Typography>}]}/><Pager pg={pgBig}/></Card></Box></Stack></Pane>
   <Pane id="reports" name="Charts"><Stack spacing={3}>
    <Box sx={{display:'grid',gap:3,gridTemplateColumns:{md:'1fr 1fr'}}}>
     <Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:2}}>Spending by tag</Typography><Donut data={S.listExpense} total={S.spent} label="Spent"/><Legend list={S.listExpense} total={S.spent||1}/></Card>

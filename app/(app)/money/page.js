@@ -14,6 +14,9 @@ import Clamp from '@/components/Clamp';
 import EditDialog from '@/components/EditDialog';
 import EditRounded from '@mui/icons-material/EditRounded';
 import DataTable from '@/components/DataTable';
+import {alpha} from '@mui/material/styles';
+import {Dialog,DialogTitle,DialogContent} from '@mui/material';
+import CloseRounded from '@mui/icons-material/CloseRounded';
 import ColorField from '@/components/ColorField';
 const fday=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 import {supabase} from '@/lib/supabase';
@@ -29,9 +32,9 @@ export default function Money(){
  const seeded=useRef(false),thisMonth=iso(new Date()).slice(0,7),[month,setMonth]=useState(thisMonth),[yy,mm]=month.split('-').map(Number),nDays=new Date(yy,mm,0).getDate(),mStart=`${month}-01`,mEnd=`${month}-${String(nDays).padStart(2,'0')}`,D=useMemo(()=>Array.from({length:nDays},(_,i)=>`${month}-${String(i+1).padStart(2,'0')}`),[month,nDays]),mLabel=new Date(yy,mm-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'}),shift=n=>{const d=new Date(yy,mm-1+n,1);setMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)};
  const [rows,setRows]=useState([]),[splits,setSplits]=useState([]),[tags,setTags]=useState([]),[dv,setDv]=useState('Expense'),[f,setF]=useState({type:'Expense',tag:'Food & Dining',amount:'',note:'',date:iso(new Date()),source:'UPI'}),[s,setS]=useState({who:'',amount:'',direction:'owes me',note:''}),[nt,setNt]=useState({name:'',kind:'expense',color:'#6A4DF4',description:''});
  const srcData=useMemo(()=>bySource(rows,dv),[rows,dv]);
- const [editE,setEditE]=useState(null),[editS,setEditS]=useState(null);
+ const [editE,setEditE]=useState(null),[editS,setEditS]=useState(null),[tagView,setTagView]=useState(null);
  // one row per tag or source: dot, name, share, amount and a bar showing its share
- const shares=(list,tip)=>list.map(d=>{const pc=total?d.value/total*100:0;const row=<Box key={d.name}><Box sx={{display:'flex',alignItems:'center'}}><Dot c={d.color}/><Clamp sx={{flex:1}}>{d.name}</Clamp><Typography variant="body2" color="text.secondary" sx={{mr:1.5}}>{pc.toFixed(0)}%</Typography><Typography fontWeight={700}>{rs(d.value)}</Typography></Box><Box sx={{height:6,borderRadius:3,bgcolor:'divider',mt:.75}}><Box sx={{height:'100%',width:`${pc}%`,borderRadius:3,bgcolor:d.color}}/></Box></Box>;return tip?<Tooltip key={d.name} title={d.description} placement="left">{row}</Tooltip>:row});
+ const shares=(list,tip,pick)=>list.map(d=>{const pc=total?d.value/total*100:0;const row=<Box key={d.name} {...(pick?{role:'button',tabIndex:0,'aria-label':`${d.name}, show entries`,onClick:()=>pick(d.name),onKeyDown:e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(d.name)}},sx:{cursor:'pointer',borderRadius:1,'&:hover':{bgcolor:'action.hover'}}}:{})}><Box sx={{display:'flex',alignItems:'center'}}><Dot c={d.color}/><Clamp sx={{flex:1}}>{d.name}</Clamp><Typography variant="body2" color="text.secondary" sx={{mr:1.5}}>{pc.toFixed(0)}%</Typography><Typography fontWeight={700}>{rs(d.value)}</Typography></Box><Box sx={{height:6,borderRadius:3,bgcolor:'divider',mt:.75}}><Box sx={{height:'100%',width:`${pc}%`,borderRadius:3,bgcolor:d.color}}/></Box></Box>;return tip?<Tooltip key={d.name} title={d.description} placement="left">{row}</Tooltip>:row});
  const loadTags=useCallback(async()=>{let{data}=await supabase.from('money_tags').select('*').order('created_at',{ascending:true,nullsFirst:true});
   if(!data?.length&&!seeded.current){seeded.current=true;await supabase.from('money_tags').upsert(DEF.map(([name,kind,color,description])=>({name,kind,color,description})),{onConflict:'user_id,name,kind',ignoreDuplicates:true});({data}=await supabase.from('money_tags').select('*'))}
   setTags(data||[])},[]);
@@ -67,8 +70,8 @@ export default function Money(){
   </Pane><Pane id="money" name="Graphs"><Stack spacing={3}>
    <Card sx={{p:{xs:2.5,md:3.5}}}><Box sx={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:1,mb:2.5}}><Typography variant="h6">By tag</Typography><ToggleButtonGroup exclusive size="small" value={dv} onChange={(_,v)=>v&&setDv(v)}><ToggleButton value="Expense">Spent</ToggleButton><ToggleButton value="Income">Earned</ToggleButton></ToggleButtonGroup></Box>
     <Box sx={{display:'grid',gap:{xs:3,md:6},gridTemplateColumns:{xs:'1fr',md:'minmax(280px,380px) 1fr'},alignItems:'center'}}>
-     <Donut data={data} total={total} label={dv==='Expense'?'Spent':'Earned'} max={380}/>
-     <Stack spacing={2} sx={{maxHeight:{md:400},overflowY:'auto',pr:1}}>{shares(data,true)}</Stack></Box></Card>
+     <Donut data={data} total={total} label={dv==='Expense'?'Spent':'Earned'} max={380} onSelect={d=>setTagView(d.name)}/>
+     <Stack spacing={2} sx={{maxHeight:{md:400},overflowY:'auto',pr:1}}>{shares(data,true,setTagView)}</Stack></Box></Card>
    <Box sx={{display:'grid',gap:3,gridTemplateColumns:{md:'1fr 1fr'}}}>
     <Card sx={{p:{xs:2.5,md:3.5}}}><Typography variant="h6">Daily spending</Typography><Typography variant="caption" color="text.secondary">{mLabel}</Typography>
      <BarChart height={340} xAxis={[{scaleType:'band',data:D,valueFormatter:(d,c)=>c.location==='tick'?d.slice(8):fdl(d)}]} series={[{data:daily,color:'#14A38B',label:'Spent',valueFormatter:v=>rs(v)}]} slotProps={{legend:{hidden:true}}}/></Card>
@@ -112,4 +115,10 @@ export default function Money(){
   <EditDialog open={!!editS} title="Edit split" initial={editS&&{who:editS.who,direction:editS.direction,amount:editS.amount,note:editS.note||''}}
    fields={[{key:'who',label:'Person',required:true},{key:'direction',label:'Who owes',type:'select',options:[['owes me','I paid, they owe me'],['I owe','I owe them']]},{key:'amount',label:'Amount (₹)',type:'number',required:true},{key:'note',label:'Note',type:'multiline'}]}
    onSave={async v=>{const a=+v.amount;if(!(a>0))throw new Error('Enter an amount above 0.');const r=await supabase.from('splits').update({who:v.who.trim(),direction:v.direction,amount:a,note:v.note||null}).eq('id',editS.id);if(r?.error)throw new Error('Could not save. Try again.');setEditS(null);load()}} onClose={()=>setEditS(null)}/>
+ {(()=>{const tv=tagView,list=tv?rows.filter(x=>x.type===dv&&(tagOf(x.type,x.category)?.name||x.category||'Untagged')===tv).sort((a,b)=>b.date.localeCompare(a.date)||b.amount-a.amount):[],sumT=list.reduce((a,x)=>a+ +x.amount,0),colr=tv?(data.find(d=>d.name===tv)?.color||'#94A3B8'):'#94A3B8',word=dv==='Expense'?(list.length===1?'expense':'expenses'):(list.length===1?'entry':'entries');
+  return <Dialog open={!!tv} onClose={()=>setTagView(null)} fullWidth maxWidth="sm" slotProps={{backdrop:{sx:{backgroundColor:'rgba(6,8,12,.5)',backdropFilter:'blur(6px)'}}}}
+   PaperProps={{sx:{bgcolor:t=>alpha(t.palette.background.paper,.68),backdropFilter:'blur(22px) saturate(150%)',backgroundImage:'none',border:'1px solid',borderColor:'divider',borderRadius:4}}}>
+   <DialogTitle sx={{pb:1}}><Box sx={{display:'flex',alignItems:'flex-start',gap:1}}><Box sx={{flex:1,minWidth:0}}><Box sx={{display:'flex',alignItems:'center'}}><Dot c={colr}/><Clamp sx={{typography:'h6'}}>{tv||''}</Clamp></Box><Typography variant="body2" color="text.secondary" sx={{mt:.5}}>{mLabel} · {list.length} {word} · {rs(sumT)}</Typography></Box><IconButton aria-label="Close" onClick={()=>setTagView(null)} sx={{mt:-.5,mr:-1}}><CloseRounded/></IconButton></Box></DialogTitle>
+   <DialogContent sx={{pt:1}}><DataTable rows={list} maxHeight="55vh" minColWidth={90} empty="No entries." headerSx={{bgcolor:t=>alpha(t.palette.background.paper,.8),backdropFilter:'blur(12px)'}}
+    columns={[{label:'Date',render:x=>fday(x.date)},{label:'Note',render:x=>x.note||'–'},{label:dv==='Expense'?'Expense':'Income',align:'right',render:x=><Typography fontWeight={700}>{rs(+x.amount)}</Typography>}]}/></DialogContent></Dialog>})()}
  </Stack>}
