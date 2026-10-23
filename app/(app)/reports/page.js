@@ -8,6 +8,7 @@ import {TabBar,Pane} from '@/components/Tabs';
 import {usePaged,Pager} from '@/components/Pager';
 import Clamp from '@/components/Clamp';
 import DataTable from '@/components/DataTable';
+import LogFilters,{applyLog,NO_FILTER} from '@/components/LogFilters';
 import {supabase} from '@/lib/supabase';
 import {isNative} from '@/lib/native';
 import {summarize,buckets,tagInfo,isoD,srcName} from '@/lib/reportCore';
@@ -17,9 +18,10 @@ const fd=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month
 const Stat=({l,v,c,s})=><Card sx={{p:2.5}}><Typography variant="body2" color="text.secondary">{l}</Typography><Typography variant="h5" sx={{color:c}}>{v}</Typography>{s&&<Typography variant="caption" color="text.secondary">{s}</Typography>}</Card>;
 async function fetchRange(from,to){let all=[],a=0;for(;;){const{data}=await supabase.from('money_entries').select('*').gte('date',from).lte('date',to).order('date',{ascending:false}).range(a,a+999);if(!data?.length)break;all=all.concat(data);if(data.length<1000)break;a+=1000}return all}
 function LogTable({rows,tags,type}){
- const sorted=[...rows].sort((a,b)=>b.date.localeCompare(a.date)),pg=usePaged(sorted,20,rows.length),total=rows.reduce((a,e)=>a+ +e.amount,0);
- return <Card sx={{p:2.5}}><Box sx={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:1,mb:1}}><Typography variant="h6">{type==='Income'?'Income log':'Expense log'}</Typography><Typography color="text.secondary">{rows.length} entries · {rs(total)}</Typography></Box>
-  <DataTable rows={pg.slice} empty="No entries in this range." columns={[
+ const [lf,setLf]=useState(NO_FILTER),tagNameR=e=>tagInfo(tags,e.type,e.category).name,shown=applyLog(rows,lf,tagNameR),pg=usePaged(shown,20,`${rows.length}|${lf.q}|${lf.tag}|${lf.source}|${lf.min}|${lf.max}|${lf.sort}`),total=shown.reduce((a,e)=>a+ +e.amount,0);
+ return <Card sx={{p:2.5}}><Box sx={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:1,mb:1}}><Typography variant="h6">{type==='Income'?'Income log':'Expense log'}</Typography><Typography color="text.secondary">{shown.length===rows.length?`${rows.length} entries`:`${shown.length} of ${rows.length} entries`} · {rs(total)}</Typography></Box>
+  <LogFilters f={lf} setF={setLf} rows={rows} tagName={tagNameR} showType={false} shown={shown.length}/>
+  <DataTable rows={pg.slice} empty={rows.length?'No entries match these filters.':'No entries in this range.'} columns={[
    {label:'Date',render:e=>fd(e.date)},
    {label:'Tag',render:e=>{const t=tagInfo(tags,e.type,e.category);return <Tooltip title={t.name}><Chip size="small" label={t.name} sx={{maxWidth:'100%',bgcolor:`${t.color}33`,fontWeight:600}}/></Tooltip>}},
    {label:'Source',render:e=>e.source?srcName(e.source):'–'},

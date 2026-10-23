@@ -66,6 +66,7 @@ create table if not exists public.streaks (
   slips int not null default 0,
   section text not null default 'streaks',
   kind text not null default 'abstain',
+  partial_mode text not null default 'clean' check (partial_mode in ('clean','slip')),
   created_at timestamptz not null default now()
 );
 

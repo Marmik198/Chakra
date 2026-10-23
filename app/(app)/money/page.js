@@ -14,8 +14,10 @@ import Clamp from '@/components/Clamp';
 import EditDialog from '@/components/EditDialog';
 import EditRounded from '@mui/icons-material/EditRounded';
 import DataTable from '@/components/DataTable';
+import LogFilters,{applyLog,NO_FILTER} from '@/components/LogFilters';
 import {alpha} from '@mui/material/styles';
 import {Dialog,DialogTitle,DialogContent} from '@mui/material';
+import CloseRounded from '@mui/icons-material/CloseRounded';
 import ColorField from '@/components/ColorField';
 const fday=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 import {supabase} from '@/lib/supabase';
@@ -31,7 +33,7 @@ export default function Money(){
  const seeded=useRef(false),thisMonth=iso(new Date()).slice(0,7),[month,setMonth]=useState(thisMonth),[yy,mm]=month.split('-').map(Number),nDays=new Date(yy,mm,0).getDate(),mStart=`${month}-01`,mEnd=`${month}-${String(nDays).padStart(2,'0')}`,D=useMemo(()=>Array.from({length:nDays},(_,i)=>`${month}-${String(i+1).padStart(2,'0')}`),[month,nDays]),mLabel=new Date(yy,mm-1,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'}),shift=n=>{const d=new Date(yy,mm-1+n,1);setMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)};
  const [rows,setRows]=useState([]),[splits,setSplits]=useState([]),[tags,setTags]=useState([]),[dv,setDv]=useState('Expense'),[f,setF]=useState({type:'Expense',tag:'Food & Dining',amount:'',note:'',date:iso(new Date()),source:'UPI'}),[s,setS]=useState({who:'',amount:'',direction:'owes me',note:''}),[nt,setNt]=useState({name:'',kind:'expense',color:'#6A4DF4',description:''});
  const srcData=useMemo(()=>bySource(rows,dv),[rows,dv]);
- const [editE,setEditE]=useState(null),[editS,setEditS]=useState(null),[tagView,setTagView]=useState(null);
+ const [editE,setEditE]=useState(null),[editS,setEditS]=useState(null),[tagView,setTagView]=useState(null),[lf,setLf]=useState(NO_FILTER);
  // one row per tag or source: dot, name, share, amount and a bar showing its share
  const shares=(list,tip,pick)=>list.map(d=>{const pc=total?d.value/total*100:0;const row=<Box key={d.name} {...(pick?{role:'button',tabIndex:0,'aria-label':`${d.name}, show entries`,onClick:()=>pick(d.name),onKeyDown:e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(d.name)}},sx:{cursor:'pointer',borderRadius:1,'&:hover':{bgcolor:'action.hover'}}}:{})}><Box sx={{display:'flex',alignItems:'center'}}><Dot c={d.color}/><Clamp sx={{flex:1}}>{d.name}</Clamp><Typography variant="body2" color="text.secondary" sx={{mr:1.5}}>{pc.toFixed(0)}%</Typography><Typography fontWeight={700}>{rs(d.value)}</Typography></Box><Box sx={{height:6,borderRadius:3,bgcolor:'divider',mt:.75}}><Box sx={{height:'100%',width:`${pc}%`,borderRadius:3,bgcolor:d.color}}/></Box></Box>;return tip?<Tooltip key={d.name} title={d.description} placement="left">{row}</Tooltip>:row});
  const loadTags=useCallback(async()=>{let{data}=await supabase.from('money_tags').select('*').order('created_at',{ascending:true,nullsFirst:true});
@@ -48,7 +50,7 @@ export default function Money(){
  const addSplit=async()=>{const a=+s.amount,w=s.who.trim();if(!w||!(a>0))return;await supabase.from('splits').insert({who:w,amount:a,direction:s.direction,note:s.note});
   if(s.direction==='owes me')await supabase.from('money_entries').insert({date:today(),type:'Expense',category:'Split',amount:a,note:`Split with ${w}${s.note?': '+s.note:''}`});setS({...s,who:'',amount:'',note:''});load()};
  const settle=async x=>{const own=x.direction==='owes me';await supabase.from('money_entries').insert({date:today(),type:own?'Income':'Expense',category:own?'Split received':'Split paid',amount:+x.amount,note:x.who+(x.note?': '+x.note:'')});await supabase.from('splits').delete().eq('id',x.id);load()};
- const pgE=usePaged(rows,20,month),sum=t=>rows.filter(x=>x.type===t).reduce((a,x)=>a+ +x.amount,0),earned=sum('Income'),spent=sum('Expense'),owed=splits.reduce((a,x)=>a+(x.direction==='owes me'?1:-1)*x.amount,0);
+ const tagNameE=x=>tagOf(x.type,x.category)?.name||x.category||'Untagged',shownE=applyLog(rows,lf,tagNameE),pgE=usePaged(shownE,20,`${month}|${lf.q}|${lf.type}|${lf.tag}|${lf.source}|${lf.min}|${lf.max}|${lf.sort}`),sum=t=>rows.filter(x=>x.type===t).reduce((a,x)=>a+ +x.amount,0),earned=sum('Income'),spent=sum('Expense'),owed=splits.reduce((a,x)=>a+(x.direction==='owes me'?1:-1)*x.amount,0);
  const grp={};rows.filter(x=>x.type===dv).forEach(x=>{const t=tagOf(x.type,x.category),n=t?t.name:(x.category||'Untagged');grp[n]=(grp[n]||0)+ +x.amount});
  const data=Object.entries(grp).sort((a,b)=>b[1]-a[1]).map(([name,value])=>{const t=tagOf(dv,name);return{name,value,color:t?.color||'#94A3B8',description:t?.description||'No description yet.'}}),total=data.reduce((a,d)=>a+d.value,0);
  const daily=D.map(d=>rows.filter(x=>x.date===d&&x.type==='Expense').reduce((a,x)=>a+ +x.amount,0));
@@ -85,7 +87,8 @@ export default function Money(){
     <TextField label="What is this tag for?" value={nt.description} onChange={e=>setNt({...nt,description:e.target.value})} sx={{flex:1,minWidth:200}}/>
     <Button variant="contained" onClick={addTag}>Add tag</Button></Stack></Card>
   </Pane><Pane id="money" name="Overview"><Card sx={{p:2.5}}><Typography variant="h6">Entries · {mLabel}</Typography>
-   <DataTable rows={pgE.slice} empty="No entries this month." actionsWidth={96} actions={x=><Stack direction="row" spacing={.5}><IconButton size="small" aria-label="Edit" onClick={()=>setEditE(x)}><EditRounded fontSize="small"/></IconButton><IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton></Stack>} columns={[
+   <LogFilters f={lf} setF={setLf} rows={rows} tagName={tagNameE} shown={shownE.length}/>
+   <DataTable rows={pgE.slice} empty={rows.length?'No entries match these filters.':'No entries this month.'} actionsWidth={96} actions={x=><Stack direction="row" spacing={.5}><IconButton size="small" aria-label="Edit" onClick={()=>setEditE(x)}><EditRounded fontSize="small"/></IconButton><IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton></Stack>} columns={[
      {label:'Date',render:x=>fday(x.date)},
      {label:'Tag',render:x=>{const t=tagOf(x.type,x.category);return <Tooltip title={t?t.name:x.category||''}><Chip size="small" label={t?t.name:x.category||'Untagged'} sx={{maxWidth:'100%',bgcolor:`${t?.color||'#94A3B8'}33`,fontWeight:600}}/></Tooltip>}},
      {label:'Source',render:x=>SOURCES.find(z=>z[0]===x.source)?.[1]||x.source||'–'},
