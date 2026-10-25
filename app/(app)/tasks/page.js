@@ -9,6 +9,7 @@ import EditRounded from '@mui/icons-material/EditRounded';
 import {rescheduleSoon} from '@/lib/native';
 import {TabBar,Pane} from '@/components/Tabs';
 import DataTable from '@/components/DataTable';
+import FormGrid,{Wide,Field} from '@/components/FormGrid';
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
 import {isDue,iso,lastDays} from '@/lib/due';
@@ -40,16 +41,16 @@ export default function Tasks(){
   {!L?<Card sx={{p:3}}><Typography color="text.secondary">Create your first list, for example Skin care, Hair care, Gut health or Meditation.</Typography></Card>:<>
    <TabBar id="tasks" tabs={["Check", "To-dos", "Log", "Manage"]}/>
 <Pane id="tasks" name="Manage"><Stack spacing={3}><Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:2}}>Add a task to {L.name}</Typography>
-    <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" alignItems="center">
-     <TextField label="Task" value={f.title} onChange={e=>set('title',e.target.value)} sx={{flex:2,minWidth:200}}/>
-     <Select value={f.cycle} onChange={e=>set('cycle',e.target.value)}>{Object.entries(CY).map(([k,v])=><MenuItem key={k} value={k}>{v}</MenuItem>)}</Select>
-     {f.cycle==='interval'&&<TextField label="Every N days" type="number" value={f.interval_n} onChange={e=>set('interval_n',e.target.value)} sx={{width:130}}/>}
-     {f.cycle==='monthly'&&<TextField label="Day of month" type="number" value={f.month_day} onChange={e=>set('month_day',e.target.value)} sx={{width:130}}/>}
-     {['interval','yearly','once'].includes(f.cycle)&&<TextField label={f.cycle==='interval'?'Starting from':'Date'} type="date" InputLabelProps={{shrink:true}} value={f.start_date} onChange={e=>set('start_date',e.target.value)} sx={{width:170}}/>}
-     {f.cycle==='weekly'&&<ToggleButtonGroup size="small" value={f.weekdays} onChange={(_,v)=>set('weekdays',v)}>{WD.map((d,i)=><ToggleButton key={i} value={i}>{d}</ToggleButton>)}</ToggleButtonGroup>}
+    <FormGrid min={190}>
+     <Wide><TextField fullWidth label="Task" value={f.title} onChange={e=>set('title',e.target.value)} onKeyDown={e=>e.key==='Enter'&&addTask()}/></Wide>
+     <TextField select label="Repeats" value={f.cycle} onChange={e=>set('cycle',e.target.value)}>{Object.entries(CY).map(([k,v])=><MenuItem key={k} value={k}>{v}</MenuItem>)}</TextField>
+     {f.cycle==='interval'&&<TextField label="Every N days" type="number" value={f.interval_n} onChange={e=>set('interval_n',e.target.value)}/>}
+     {f.cycle==='monthly'&&<TextField label="Day of month" type="number" value={f.month_day} onChange={e=>set('month_day',e.target.value)}/>}
+     {['interval','yearly','once'].includes(f.cycle)&&<TextField label={f.cycle==='interval'?'Starting from':'Date'} type="date" InputLabelProps={{shrink:true}} value={f.start_date} onChange={e=>set('start_date',e.target.value)}/>}
+     {f.cycle==='weekly'&&<Wide><Field label="On these days"><ToggleButtonGroup size="small" value={f.weekdays} onChange={(_,v)=>set('weekdays',v)}>{WD.map((d,i)=><ToggleButton key={i} value={i}>{d}</ToggleButton>)}</ToggleButtonGroup></Field></Wide>}
      {f.cycle!=='todo'&&<><TextField label="Time" type="time" InputLabelProps={{shrink:true}} value={f.remind_time} onChange={e=>set('remind_time',e.target.value)}/>
-      <FormControlLabel control={<Switch checked={f.remind} onChange={e=>set('remind',e.target.checked)}/>} label="Remind me"/></>}
-     <Button variant="contained" onClick={addTask}>Add task</Button></Stack></Card>
+      <Box sx={{display:'flex',alignItems:'center',minHeight:56}}><FormControlLabel control={<Switch checked={f.remind} onChange={e=>set('remind',e.target.checked)}/>} label="Remind me"/></Box></>}
+     <Wide><Button variant="contained" size="large" onClick={addTask} sx={{px:5,width:{xs:'100%',sm:'auto'}}}>Add task</Button></Wide></FormGrid></Card>
     <Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:1}}>Tasks in {L.name}</Typography>
      <DataTable rows={mine} empty="No tasks in this list yet." actionsWidth={96} actions={t=><Stack direction="row" spacing={.5}><IconButton size="small" aria-label={`Edit ${t.title}`} onClick={()=>setEditT(t)}><EditRounded fontSize="small"/></IconButton><IconButton size="small" aria-label={`Delete ${t.title}`} onClick={()=>del(t)}><DeleteRounded fontSize="small"/></IconButton></Stack>}
       columns={[{label:'Task',render:t=>t.title},{label:'Repeats',render:t=>describe(t)},{label:'Time',render:t=>t.remind_time?`${t.remind_time.slice(0,5)}${t.remind?' · reminder':''}`:'–'}]}/></Card></Stack>

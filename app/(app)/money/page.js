@@ -14,9 +14,11 @@ import Clamp from '@/components/Clamp';
 import EditDialog from '@/components/EditDialog';
 import EditRounded from '@mui/icons-material/EditRounded';
 import DataTable from '@/components/DataTable';
+import FormGrid,{Wide,Field} from '@/components/FormGrid';
 import LogFilters,{applyLog,NO_FILTER} from '@/components/LogFilters';
 import {alpha} from '@mui/material/styles';
 import {Dialog,DialogTitle,DialogContent} from '@mui/material';
+import CloseRounded from '@mui/icons-material/CloseRounded';
 import ColorField from '@/components/ColorField';
 const fday=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 import {supabase} from '@/lib/supabase';
@@ -49,7 +51,7 @@ export default function Money(){
  const addSplit=async()=>{const a=+s.amount,w=s.who.trim();if(!w||!(a>0))return;await supabase.from('splits').insert({who:w,amount:a,direction:s.direction,note:s.note});
   if(s.direction==='owes me')await supabase.from('money_entries').insert({date:today(),type:'Expense',category:'Split',amount:a,note:`Split with ${w}${s.note?': '+s.note:''}`});setS({...s,who:'',amount:'',note:''});load()};
  const settle=async x=>{const own=x.direction==='owes me';await supabase.from('money_entries').insert({date:today(),type:own?'Income':'Expense',category:own?'Split received':'Split paid',amount:+x.amount,note:x.who+(x.note?': '+x.note:'')});await supabase.from('splits').delete().eq('id',x.id);load()};
- const tagNameE=x=>tagOf(x.type,x.category)?.name||x.category||'Untagged',shownE=applyLog(rows,lf,tagNameE),pgE=usePaged(shownE,20,`${month}|${lf.q}|${lf.type}|${lf.tag}|${lf.source}|${lf.min}|${lf.max}|${lf.sort}`),sum=t=>rows.filter(x=>x.type===t).reduce((a,x)=>a+ +x.amount,0),earned=sum('Income'),spent=sum('Expense'),owed=splits.reduce((a,x)=>a+(x.direction==='owes me'?1:-1)*x.amount,0);
+ const tagNameE=x=>tagOf(x.type,x.category)?.name||x.category||'Untagged',shownE=applyLog(rows,lf,tagNameE),pgE=usePaged(shownE,20,`${month}|${lf.q}|${lf.type}|${lf.tag}|${lf.source}|${lf.sort}`),sum=t=>rows.filter(x=>x.type===t).reduce((a,x)=>a+ +x.amount,0),earned=sum('Income'),spent=sum('Expense'),owed=splits.reduce((a,x)=>a+(x.direction==='owes me'?1:-1)*x.amount,0);
  const grp={};rows.filter(x=>x.type===dv).forEach(x=>{const t=tagOf(x.type,x.category),n=t?t.name:(x.category||'Untagged');grp[n]=(grp[n]||0)+ +x.amount});
  const data=Object.entries(grp).sort((a,b)=>b[1]-a[1]).map(([name,value])=>{const t=tagOf(dv,name);return{name,value,color:t?.color||'#94A3B8',description:t?.description||'No description yet.'}}),total=data.reduce((a,d)=>a+d.value,0);
  const daily=D.map(d=>rows.filter(x=>x.date===d&&x.type==='Expense').reduce((a,x)=>a+ +x.amount,0));
@@ -59,14 +61,14 @@ export default function Money(){
 <TabBar id="money" tabs={["Overview", "Graphs", "Tags", "Splits"]}/>
 <Pane id="money" name="Overview"><Box sx={{display:'grid',gap:2,gridTemplateColumns:{xs:'1fr 1fr',md:'repeat(4,1fr)'}}}><Stat l="Earned" v={rs(earned)} c="success.main"/><Stat l="Spent" v={rs(spent)} c="error.main"/><Stat l="Left over" v={rs(earned-spent)}/><Stat l={owed>=0?'You are owed':'You owe'} v={rs(Math.abs(owed))} c="secondary.main"/></Box>
   <Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:2}}>Add an entry</Typography>
-   <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" alignItems="center">
-    <ToggleButtonGroup exclusive size="small" value={f.type} onChange={(_,v)=>v&&setF({...f,type:v,tag:(ofKind(v)[0]||{}).name||''})}><ToggleButton value="Expense">Expense</ToggleButton><ToggleButton value="Income">Income</ToggleButton></ToggleButtonGroup>
-    <Select value={ofKind(f.type).some(t=>t.name===f.tag)?f.tag:''} displayEmpty onChange={e=>setF({...f,tag:e.target.value})} sx={{minWidth:190}} renderValue={v=>v?<Box sx={{display:'flex',alignItems:'center'}}><Dot c={tagOf(f.type,v)?.color}/>{v}</Box>:'Choose a tag'}>{ofKind(f.type).map(t=><MenuItem key={t.id} value={t.name}><Dot c={t.color}/>{t.name}</MenuItem>)}</Select>
-    <TextField select label="Source" value={f.source} onChange={e=>setF({...f,source:e.target.value})} sx={{width:170}}>{SOURCES.map(x=><MenuItem key={x[0]} value={x[0]}>{x[1]}</MenuItem>)}</TextField>
-    <TextField label="Date" type="date" InputLabelProps={{shrink:true}} value={f.date} onChange={e=>setF({...f,date:e.target.value})} sx={{width:160}}/>
-    <TextField label="Amount ₹" type="number" value={f.amount} onChange={e=>setF({...f,amount:e.target.value})} sx={{width:130}}/>
-    <TextField label="Note" value={f.note} onChange={e=>setF({...f,note:e.target.value})} onKeyDown={e=>e.key==='Enter'&&add()} sx={{flex:1,minWidth:160}}/>
-    <Button variant="contained" disabled={!f.tag} onClick={add}>Add</Button></Stack></Card>
+   <FormGrid>
+    <Field label="Type"><ToggleButtonGroup fullWidth exclusive size="small" value={f.type} onChange={(_,v)=>v&&setF({...f,type:v,tag:(ofKind(v)[0]||{}).name||''})} sx={{'& .MuiToggleButton-root':{flex:1}}}><ToggleButton value="Expense">Expense</ToggleButton><ToggleButton value="Income">Income</ToggleButton></ToggleButtonGroup></Field>
+    <TextField select label="Tag" value={ofKind(f.type).some(t=>t.name===f.tag)?f.tag:''} onChange={e=>setF({...f,tag:e.target.value})} InputLabelProps={{shrink:true}} SelectProps={{displayEmpty:true,renderValue:v=>v?<Box sx={{display:'flex',alignItems:'center'}}><Dot c={tagOf(f.type,v)?.color}/>{v}</Box>:'Choose a tag'}}>{ofKind(f.type).map(t=><MenuItem key={t.id} value={t.name}><Dot c={t.color}/>{t.name}</MenuItem>)}</TextField>
+    <TextField label="Amount (₹)" type="number" value={f.amount} onChange={e=>setF({...f,amount:e.target.value})}/>
+    <TextField label="Date" type="date" InputLabelProps={{shrink:true}} value={f.date} onChange={e=>setF({...f,date:e.target.value})}/>
+    <TextField select label="Source" value={f.source} onChange={e=>setF({...f,source:e.target.value})}>{SOURCES.map(x=><MenuItem key={x[0]} value={x[0]}>{x[1]}</MenuItem>)}</TextField>
+    <Wide><TextField fullWidth label="Note" value={f.note} onChange={e=>setF({...f,note:e.target.value})} onKeyDown={e=>e.key==='Enter'&&add()}/></Wide>
+    <Wide><Button variant="contained" size="large" disabled={!f.tag} onClick={add} sx={{px:5,width:{xs:'100%',sm:'auto'}}}>Add entry</Button></Wide></FormGrid></Card>
   </Pane><Pane id="money" name="Graphs"><Stack spacing={3}>
    <Card sx={{p:{xs:2.5,md:3.5}}}><Box sx={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:1,mb:2.5}}><Typography variant="h6">By tag</Typography><ToggleButtonGroup exclusive size="small" value={dv} onChange={(_,v)=>v&&setDv(v)}><ToggleButton value="Expense">Spent</ToggleButton><ToggleButton value="Income">Earned</ToggleButton></ToggleButtonGroup></Box>
     <Box sx={{display:'grid',gap:{xs:3,md:6},gridTemplateColumns:{xs:'1fr',md:'minmax(280px,380px) 1fr'},alignItems:'center'}}>
@@ -79,12 +81,13 @@ export default function Money(){
      <Box sx={{display:'grid',gap:3,gridTemplateColumns:{xs:'1fr',sm:'minmax(150px,220px) 1fr'},alignItems:'center'}}><Donut data={srcData} total={total} label={dv==='Expense'?'Spent':'Earned'} max={220}/><Stack spacing={2}>{shares(srcData,false)}</Stack></Box></Card></Box></Stack>
   </Pane><Pane id="money" name="Tags"><Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:1}}>Tags</Typography><Typography variant="body2" color="text.secondary" sx={{mb:2}}>Every entry gets one tag. Add your own with a colour and a short description. The description appears in the chart tooltip.</Typography>
    {['expense','income'].map(k=><Box key={k} sx={{mb:2}}><Typography variant="subtitle2" sx={{mb:.5,textTransform:'capitalize'}}>{k}</Typography><Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">{ofKind(k).map(t=><Tooltip key={t.id} title={t.description||''}><Chip label={t.name} onDelete={()=>delTag(t)} deleteIcon={<CloseRounded/>} sx={{bgcolor:`${t.color}26`,color:'text.primary','& .MuiChip-label':{pl:1.5},'&::before':{content:'""',width:10,height:10,borderRadius:'50%',bgcolor:t.color,ml:1.25}}}/></Tooltip>)}</Stack></Box>)}
-   <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" alignItems="center" sx={{mt:1}}>
-    <TextField label="New tag name" value={nt.name} onChange={e=>setNt({...nt,name:e.target.value})} sx={{minWidth:160}}/>
-    <Select value={nt.kind} onChange={e=>setNt({...nt,kind:e.target.value})}><MenuItem value="expense">Expense</MenuItem><MenuItem value="income">Income</MenuItem></Select>
-    <ColorField label="Tag colour" value={nt.color} onChange={c=>setNt({...nt,color:c})}/>
-    <TextField label="What is this tag for?" value={nt.description} onChange={e=>setNt({...nt,description:e.target.value})} sx={{flex:1,minWidth:200}}/>
-    <Button variant="contained" onClick={addTag}>Add tag</Button></Stack></Card>
+   <Typography variant="subtitle1" fontWeight={700} sx={{mt:3,mb:2}}>Add a tag</Typography>
+   <FormGrid>
+    <TextField label="Tag name" value={nt.name} onChange={e=>setNt({...nt,name:e.target.value})}/>
+    <TextField select label="Type" value={nt.kind} onChange={e=>setNt({...nt,kind:e.target.value})}><MenuItem value="expense">Expense</MenuItem><MenuItem value="income">Income</MenuItem></TextField>
+    <Field label="Colour"><ColorField label="Tag colour" value={nt.color} onChange={c=>setNt({...nt,color:c})}/></Field>
+    <Wide><TextField fullWidth label="What is this tag for?" value={nt.description} onChange={e=>setNt({...nt,description:e.target.value})}/></Wide>
+    <Wide><Button variant="contained" size="large" onClick={addTag} sx={{px:5,width:{xs:'100%',sm:'auto'}}}>Add tag</Button></Wide></FormGrid></Card>
   </Pane><Pane id="money" name="Overview"><Card sx={{p:2.5}}><Typography variant="h6">Entries · {mLabel}</Typography>
    <LogFilters f={lf} setF={setLf} rows={rows} tagName={tagNameE} shown={shownE.length}/>
    <DataTable rows={pgE.slice} empty={rows.length?'No entries match these filters.':'No entries this month.'} actionsWidth={96} actions={x=><Stack direction="row" spacing={.5}><IconButton size="small" aria-label="Edit" onClick={()=>setEditE(x)}><EditRounded fontSize="small"/></IconButton><IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton></Stack>} columns={[
@@ -100,12 +103,13 @@ export default function Money(){
      {label:'Who owes',render:x=>x.direction==='owes me'?'They owe you':'You owe them'},
      {label:'Amount',align:'right',render:x=>rs(+x.amount)},
      {label:'Note',render:x=>x.note||'–'}]}/>
-   <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" sx={{mt:1}}>
+   <Typography variant="subtitle1" fontWeight={700} sx={{mt:3,mb:2}}>Add a split</Typography>
+   <FormGrid>
     <TextField label="Person" value={s.who} onChange={e=>setS({...s,who:e.target.value})}/>
-    <Select value={s.direction} onChange={e=>setS({...s,direction:e.target.value})}><MenuItem value="owes me">I paid, they owe me</MenuItem><MenuItem value="I owe">I owe them</MenuItem></Select>
-    <TextField label="₹" type="number" value={s.amount} onChange={e=>setS({...s,amount:e.target.value})} sx={{width:110}}/>
-    <TextField label="For what" value={s.note} onChange={e=>setS({...s,note:e.target.value})} sx={{flex:1,minWidth:140}}/>
-    <Button variant="contained" onClick={addSplit}>Add</Button></Stack></Card>
+    <TextField select label="Who owes" value={s.direction} onChange={e=>setS({...s,direction:e.target.value})}><MenuItem value="owes me">I paid, they owe me</MenuItem><MenuItem value="I owe">I owe them</MenuItem></TextField>
+    <TextField label="Amount (₹)" type="number" value={s.amount} onChange={e=>setS({...s,amount:e.target.value})}/>
+    <Wide><TextField fullWidth label="For what" value={s.note} onChange={e=>setS({...s,note:e.target.value})}/></Wide>
+    <Wide><Button variant="contained" size="large" onClick={addSplit} sx={{px:5,width:{xs:'100%',sm:'auto'}}}>Add split</Button></Wide></FormGrid></Card>
  </Pane><EditDialog open={!!editE} title="Edit entry" initial={editE&&{type:editE.type,category:editE.category,amount:editE.amount,date:editE.date,source:editE.source||'UPI',note:editE.note||''}}
    fields={[{key:'type',label:'Type',type:'select',options:[['Expense','Expense'],['Income','Income']]},
     {key:'category',label:'Tag',type:'select',options:v=>{const l=tags.filter(t=>t.kind===String(v.type).toLowerCase()).map(t=>[t.name,t.name]);return !v.category||l.some(o=>o[0]===v.category)?l:[[v.category,v.category],...l]}},

@@ -6,6 +6,7 @@ import {usePaged,Pager} from '@/components/Pager';
 import Clamp from '@/components/Clamp';
 import DataTable from '@/components/DataTable';
 const fday=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+import FormGrid,{Wide,Field} from '@/components/FormGrid';
 import {supabase} from '@/lib/supabase';
 import {iso} from '@/lib/due';
 const SRC=['Mutual funds','Stocks','Gold','FD','Crypto','Real estate','Other'];
@@ -31,7 +32,12 @@ export default function Investments(){
  return <Stack spacing={3}><Box><Typography variant="h4">Investments</Typography><Typography color="text.secondary">Holdings by source, and realized profit or loss when you sell.</Typography></Box>
   <TabBar id="invest" tabs={["Overview", "Holdings", "Profit & loss", "Add"]}/>
 <Pane id="invest" name="Overview"><Box sx={{display:'grid',gap:2,gridTemplateColumns:{xs:'1fr 1fr',md:'repeat(4,1fr)'}}}><Stat l="Invested" v={rs(cost)}/><Stat l="Current value" v={rs(cur)}/><Stat l={`Unrealized${cost?` (${(un/cost*100).toFixed(1)}%)`:''}`} v={rs(un)} c={col(un)}/><Stat l="Realized" v={rs(re)} c={col(re)}/></Box>
-  </Pane><Pane id="invest" name="Add"><Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:1.5}}>Add an investment</Typography><Stack direction="row" spacing={2} useFlexGap flexWrap="wrap"><TextField label="Asset name" value={f.name} onChange={e=>setF({...f,name:e.target.value})} sx={{flex:1,minWidth:180}}/><Select value={f.source} onChange={e=>setF({...f,source:e.target.value})}>{SRC.map(s=><MenuItem key={s} value={s}>{s}</MenuItem>)}</Select><TextField label="Amount ₹" type="number" value={f.amount} onChange={e=>setF({...f,amount:e.target.value})} sx={{width:130}}/><TextField label="Units (optional)" type="number" value={f.units} onChange={e=>setF({...f,units:e.target.value})} sx={{width:150}}/><Button variant="contained" onClick={add}>Add</Button></Stack>
+  </Pane><Pane id="invest" name="Add"><Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:1.5}}>Add an investment</Typography><FormGrid>
+    <TextField label="Asset name" value={f.name} onChange={e=>setF({...f,name:e.target.value})}/>
+    <TextField select label="Source" value={f.source} onChange={e=>setF({...f,source:e.target.value})}>{SRC.map(s=><MenuItem key={s} value={s}>{s}</MenuItem>)}</TextField>
+    <TextField label="Amount (₹)" type="number" value={f.amount} onChange={e=>setF({...f,amount:e.target.value})}/>
+    <TextField label="Units (optional)" type="number" value={f.units} onChange={e=>setF({...f,units:e.target.value})}/>
+    <Wide><Button variant="contained" size="large" onClick={add} sx={{px:5,width:{xs:'100%',sm:'auto'}}}>Add investment</Button></Wide></FormGrid>
    <Typography variant="caption" color="text.secondary">Adding to an existing name tops up that holding.</Typography></Card>
   </Pane><Pane id="invest" name="Holdings"><Box sx={{display:'grid',gap:2,gridTemplateColumns:'repeat(auto-fill,minmax(310px,1fr))'}}>{H.map(x=>{const s=sell[x.id]||{};return <Card key={x.id} sx={{p:2.5}}>
    <Box sx={{display:'flex',justifyContent:'space-between'}}><Clamp sx={{typography:'h6',flex:1,pr:1}}>{x.name}</Clamp><Typography color="text.secondary">{x.source}{+x.units>0?` · ${+x.units} units`:''}</Typography></Box>

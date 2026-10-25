@@ -7,6 +7,7 @@ import {TabBar,Pane} from '@/components/Tabs';
 import EditDialog from '@/components/EditDialog';
 import EditRounded from '@mui/icons-material/EditRounded';
 import DataTable from '@/components/DataTable';
+import FormGrid,{Wide,Field} from '@/components/FormGrid';
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
 import {iso,lastDays} from '@/lib/due';
@@ -34,8 +35,13 @@ export default function Food(){
    <LinearProgress variant="determinate" color={kc>goal?'error':'secondary'} value={Math.min(100,kc/goal*100)} sx={{height:10,borderRadius:5}}/></Card>
   <Card sx={{p:2.5}}><Typography variant="h6" sx={{mb:1.5}}>Add food</Typography>
    {recent.length>0&&<Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{mb:2}}>{recent.map(x=><Chip key={x.item} label={`+ ${x.item} · ${x.kcal}`} onClick={()=>ins({meal:x.meal==='Eaten out'?'Lunch':x.meal,item:x.item,kcal:x.kcal,protein:x.protein,eaten_out:!!x.eaten_out||x.meal==='Eaten out'})}/>)}</Stack>}
-   <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap"><Select value={f.meal} onChange={e=>setF({...f,meal:e.target.value})}>{MEALS.map(m=><MenuItem key={m} value={m}>{m}</MenuItem>)}</Select>
-    <TextField label="Food item" value={f.item} onChange={e=>setF({...f,item:e.target.value})} sx={{flex:1,minWidth:180}}/><TextField label="kcal" type="number" value={f.kcal} onChange={e=>setF({...f,kcal:e.target.value})} sx={{width:100}}/><TextField label="Protein g" type="number" value={f.protein} onChange={e=>setF({...f,protein:e.target.value})} sx={{width:110}}/><FormControlLabel control={<Checkbox checked={f.eo} onChange={e=>setF({...f,eo:e.target.checked})}/>} label="Eaten out"/><Button variant="contained" onClick={add}>Add</Button></Stack></Card>
+   <FormGrid min={170}>
+    <TextField select label="Meal" value={f.meal} onChange={e=>setF({...f,meal:e.target.value})}>{MEALS.map(m=><MenuItem key={m} value={m}>{m}</MenuItem>)}</TextField>
+    <TextField label="Food item" value={f.item} onChange={e=>setF({...f,item:e.target.value})} onKeyDown={e=>e.key==='Enter'&&add()} sx={{gridColumn:{sm:'span 2'}}}/>
+    <TextField label="Calories (kcal)" type="number" value={f.kcal} onChange={e=>setF({...f,kcal:e.target.value})}/>
+    <TextField label="Protein (g)" type="number" value={f.protein} onChange={e=>setF({...f,protein:e.target.value})}/>
+    <Box sx={{display:'flex',alignItems:'center',minHeight:56}}><FormControlLabel control={<Checkbox checked={f.eo} onChange={e=>setF({...f,eo:e.target.checked})}/>} label="Eaten out"/></Box>
+    <Wide><Button variant="contained" size="large" onClick={add} sx={{px:5,width:{xs:'100%',sm:'auto'}}}>Add food</Button></Wide></FormGrid></Card>
   <Card sx={{p:2.5}}><Box sx={{display:'flex',gap:1,flexWrap:'wrap',mb:1.5}}>{MEALS.map(m=>{const l=today.filter(x=>(x.meal==='Eaten out'?'Lunch':x.meal)===m);return <Chip key={m} variant="outlined" label={`${m} · ${Math.round(sum(l,'kcal'))} kcal`}/>})}</Box>
    <DataTable rows={[...today].sort((a,b)=>MEALS.indexOf(a.meal==='Eaten out'?'Lunch':a.meal)-MEALS.indexOf(b.meal==='Eaten out'?'Lunch':b.meal))} empty="Nothing logged today." actionsWidth={96} actions={x=><Stack direction="row" spacing={.5}><IconButton size="small" aria-label="Edit" onClick={()=>setEditF(x)}><EditRounded fontSize="small"/></IconButton><IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton></Stack>}
     columns={[{label:'Meal',render:x=>x.meal==='Eaten out'?'Lunch':x.meal},{label:'Item',render:x=>x.item},{label:'Calories',align:'right',render:x=>`${Math.round(x.kcal)} kcal`},{label:'Protein',align:'right',render:x=>x.protein?`${x.protein} g`:'–'},{label:'Where',render:x=>x.eaten_out||x.meal==='Eaten out'?'Eaten out':'Home'}]}/></Card>

@@ -8,6 +8,7 @@ import {usePaged,Pager} from '@/components/Pager';
 import EditDialog from '@/components/EditDialog';
 import EditRounded from '@mui/icons-material/EditRounded';
 import DataTable from '@/components/DataTable';
+import FormGrid,{Wide,Field} from '@/components/FormGrid';
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
 import {iso} from '@/lib/due';
@@ -40,14 +41,14 @@ export default function Sleep(){
    <Stat l="7-day average" v={l7.length?hm(avg):'-'} s={`Target ${hm(gmin*60)} to ${hm(gmax*60)} · ${l7.length?sta(avg):'-'}`} c={l7.length?scol(avg):undefined}/>
    <Stat l="Nights target met" v={`${metN} of ${l7.length}`} s={`Last 7 days · ${inN} in range · ${aboveN} above · ${belowN} below`} c={metN>=5?'success.main':metN>0?'info.main':'warning.main'}/>
    <Stat l="Average bed / wake" v={`${avgTime(rows.map(r=>({b:r.bedtime,w:r.wake_time})),'b')} / ${avgTime(rows.map(r=>({b:r.bedtime,w:r.wake_time})),'w')}`} s={`Bedtime varies by about ${spread(rows.map(r=>({b:r.bedtime})),'b')} min`}/></Box>
-  <Card sx={{p:2.5}}><Box sx={{display:'flex',justifyContent:'space-between',alignItems:'center',mb:2}}><Typography variant="h6">Log a night</Typography><Stack direction="row" spacing={1}><TextField label="Min hours" type="number" inputProps={{step:.25}} value={gmin} onChange={e=>saveR(+e.target.value,gmax)} sx={{width:110}}/><TextField label="Max hours" type="number" inputProps={{step:.25}} value={gmax} onChange={e=>saveR(gmin,+e.target.value)} sx={{width:110}}/></Stack></Box>
-   <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" alignItems="center">
+  <Card sx={{p:2.5}}><Box sx={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:2,mb:2.5}}><Typography variant="h6">Log a night</Typography><Stack direction="row" spacing={1}><TextField label="Min hours" type="number" inputProps={{step:.25}} value={gmin} onChange={e=>saveR(+e.target.value,gmax)} sx={{width:110}}/><TextField label="Max hours" type="number" inputProps={{step:.25}} value={gmax} onChange={e=>saveR(gmin,+e.target.value)} sx={{width:110}}/></Stack></Box>
+   <FormGrid min={170}>
     <TextField label="Woke up on" type="date" InputLabelProps={{shrink:true}} value={f.date} onChange={e=>setF({...f,date:e.target.value})}/>
     <TextField label="Bedtime" type="time" InputLabelProps={{shrink:true}} value={f.bed} onChange={e=>setF({...f,bed:e.target.value})}/>
     <TextField label="Wake time" type="time" InputLabelProps={{shrink:true}} value={f.wake} onChange={e=>setF({...f,wake:e.target.value})}/>
-    <Box><Typography variant="caption" color="text.secondary">Quality</Typography><br/><Rating value={f.q} onChange={(_,v)=>setF({...f,q:v||0})}/></Box>
-    <TextField label="Note" value={f.note} onChange={e=>setF({...f,note:e.target.value})} sx={{flex:1,minWidth:160}}/>
-    <Button variant="contained" onClick={save}>Save · {hm(dur(f.bed,f.wake))}</Button></Stack></Card>
+    <Field label="Quality" sx={{pt:.5}}><Rating size="large" value={f.q} onChange={(_,v)=>setF({...f,q:v||0})}/></Field>
+    <Wide><TextField fullWidth label="Note" value={f.note} onChange={e=>setF({...f,note:e.target.value})}/></Wide>
+    <Wide><Button variant="contained" size="large" onClick={save} sx={{px:5,width:{xs:'100%',sm:'auto'}}}>Save · {hm(dur(f.bed,f.wake))}</Button></Wide></FormGrid></Card>
   </Pane><Pane id="sleep" name="Charts"><Stack spacing={3}>
    <Card sx={{p:{xs:2.5,md:3.5}}}><Typography variant="h6">Hours slept</Typography><Typography variant="body2" color="text.secondary" sx={{mb:1}}>Last 14 days · target {hm(lo)} to {hm(hi)}</Typography>
     <BarChart height={340} margin={{left:52,right:16,top:60,bottom:44}} grid={{horizontal:true}} yAxis={[{min:0,max:ymax,tickMinStep:1,valueFormatter:v=>`${v}h`}]}

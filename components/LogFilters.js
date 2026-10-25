@@ -3,11 +3,11 @@ import {Box,TextField,MenuItem,Button,Typography,InputAdornment} from '@mui/mate
 import SearchRounded from '@mui/icons-material/SearchRounded';
 import {SOURCES} from '@/lib/reportCore';
 // Filter and sort controls for a list of money entries. Use applyLog(rows, filters, tagName) to get the shown rows.
-export const NO_FILTER={q:'',type:'all',tag:'all',source:'all',min:'',max:'',sort:'newest'};
+export const NO_FILTER={q:'',type:'all',tag:'all',source:'all',sort:'newest'};
 export const SORTS=[['newest','Date: newest first'],['oldest','Date: oldest first'],['high','Amount: high to low'],['low','Amount: low to high'],['tag','Tag: A to Z']];
 export function applyLog(rows,f,tagName){
- const q=f.q.trim().toLowerCase(),mn=f.min===''?null:+f.min,mx=f.max===''?null:+f.max;
- const out=rows.filter(x=>(f.type==='all'||x.type===f.type)&&(f.tag==='all'||tagName(x)===f.tag)&&(f.source==='all'||(x.source||'Not set')===f.source)&&(mn==null||+x.amount>=mn)&&(mx==null||+x.amount<=mx)&&(!q||`${x.note||''} ${tagName(x)} ${x.amount}`.toLowerCase().includes(q)));
+ const q=f.q.trim().toLowerCase();
+ const out=rows.filter(x=>(f.type==='all'||x.type===f.type)&&(f.tag==='all'||tagName(x)===f.tag)&&(f.source==='all'||(x.source||'Not set')===f.source)&&(!q||`${x.note||''} ${tagName(x)} ${x.amount}`.toLowerCase().includes(q)));
  const cmp={newest:(a,b)=>b.date.localeCompare(a.date),oldest:(a,b)=>a.date.localeCompare(b.date),high:(a,b)=>+b.amount-+a.amount,low:(a,b)=>+a.amount-+b.amount,tag:(a,b)=>tagName(a).localeCompare(tagName(b))||b.date.localeCompare(a.date)}[f.sort]||(()=>0);
  return [...out].sort(cmp)}
 export default function LogFilters({f,setF,rows,tagName,showType=true,shown}){
@@ -18,7 +18,5 @@ export default function LogFilters({f,setF,rows,tagName,showType=true,shown}){
    {showType&&<TextField select size="small" label="Type" value={f.type} onChange={e=>set('type',e.target.value)}><MenuItem value="all">All types</MenuItem><MenuItem value="Expense">Expenses</MenuItem><MenuItem value="Income">Income</MenuItem></TextField>}
    <TextField select size="small" label="Tag" value={f.tag} onChange={e=>set('tag',e.target.value)}><MenuItem value="all">All tags</MenuItem>{tagNames.map(n=><MenuItem key={n} value={n}>{n}</MenuItem>)}</TextField>
    <TextField select size="small" label="Source" value={f.source} onChange={e=>set('source',e.target.value)}><MenuItem value="all">All sources</MenuItem>{SOURCES.map(s=><MenuItem key={s[0]} value={s[0]}>{s[1]}</MenuItem>)}{hasNone&&<MenuItem value="Not set">Not set</MenuItem>}</TextField>
-   <TextField size="small" label="Min amount" type="number" value={f.min} onChange={e=>set('min',e.target.value)}/>
-   <TextField size="small" label="Max amount" type="number" value={f.max} onChange={e=>set('max',e.target.value)}/>
    <TextField select size="small" label="Sort by" value={f.sort} onChange={e=>set('sort',e.target.value)}>{SORTS.map(s=><MenuItem key={s[0]} value={s[0]}>{s[1]}</MenuItem>)}</TextField></Box>
   <Box sx={{display:'flex',alignItems:'center',gap:1.5,mt:1}}><Typography variant="body2" color="text.secondary">Showing {shown} of {rows.length}</Typography>{active&&<Button size="small" onClick={()=>setF({...NO_FILTER,sort:f.sort})}>Clear filters</Button>}</Box></Box>}

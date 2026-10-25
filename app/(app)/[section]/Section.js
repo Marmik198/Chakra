@@ -11,6 +11,7 @@ import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded';
 import EditDialog from '@/components/EditDialog';
 import EditRounded from '@mui/icons-material/EditRounded';
 import DataTable from '@/components/DataTable';
+import FormGrid,{Wide,Field} from '@/components/FormGrid';
 import {supabase} from '@/lib/supabase';
 import {undoable} from '@/lib/undo';
 import {iso,lastDays} from '@/lib/due';
@@ -62,13 +63,13 @@ export default function Section({section:ps}){
    {cfg.manage?<Button variant="outlined" startIcon={<SettingsRounded/>} onClick={openMg}>Manage lists</Button>:<><TextField placeholder="New list" value={nc} onChange={e=>setNc(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addCol()}/><Button variant="outlined" onClick={addCol}>Add</Button></>}</Card>
   {col&&<Card sx={{p:2.5}}><Box sx={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:1}}><Typography variant="h6">{lab(col)}</Typography><Typography color="text.secondary">{rows.length} {rows.length===1?'entry':'entries'}{isSeries?` · ${eps} episodes`:''}{cfg.cost&&total?` · spent ₹${Math.round(total).toLocaleString('en-IN')}`:''}</Typography></Box>
    {WL&&<ToggleButtonGroup exclusive size="small" value={view} onChange={(_,v)=>v&&setView(v)} sx={{mt:1.5}} aria-label="Which list"><ToggleButton value="done">{WL[0]}</ToggleButton><ToggleButton value="want">{WL[1]}</ToggleButton></ToggleButtonGroup>}
-   <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" alignItems="center" sx={{my:2}}>
-    <TextField label={isSeries?'Series name':'Title'} value={f.title} onChange={e=>setF({...f,title:e.target.value})} onKeyDown={e=>e.key==='Enter'&&add()} sx={{flex:1,minWidth:180}}/>
-    {isSeries&&view!=='want'&&<TextField label="Episodes watched" type="number" value={f.episodes} onChange={e=>setF({...f,episodes:e.target.value})} sx={{width:150}}/>}
-    <TextField label="Note" value={f.note} onChange={e=>setF({...f,note:e.target.value})} onKeyDown={e=>e.key==='Enter'&&add()} sx={{flex:1,minWidth:180}}/>
-    {cfg.rate&&view!=='want'&&<Rating value={f.rating} onChange={(_,v)=>setF({...f,rating:v||0})}/>}
-    {cfg.cost&&<TextField label="Cost ₹" type="number" value={f.cost} onChange={e=>setF({...f,cost:e.target.value})} sx={{width:110}}/>}
-    <Button variant="contained" onClick={add}>{view==='want'?`Add to ${WL[1].toLowerCase()}`:'Add'}</Button></Stack>
+   <FormGrid sx={{my:2.5}}>
+    <TextField label={isSeries?'Series name':'Title'} value={f.title} onChange={e=>setF({...f,title:e.target.value})} onKeyDown={e=>e.key==='Enter'&&add()}/>
+    {isSeries&&view!=='want'&&<TextField label="Episodes watched" type="number" value={f.episodes} onChange={e=>setF({...f,episodes:e.target.value})}/>}
+    {cfg.cost&&<TextField label="Cost (₹)" type="number" value={f.cost} onChange={e=>setF({...f,cost:e.target.value})}/>}
+    {cfg.rate&&view!=='want'&&<Field label="Rating" sx={{pt:.5}}><Rating size="large" value={f.rating} onChange={(_,v)=>setF({...f,rating:v||0})}/></Field>}
+    <Wide><TextField fullWidth label="Note" value={f.note} onChange={e=>setF({...f,note:e.target.value})} onKeyDown={e=>e.key==='Enter'&&add()}/></Wide>
+    <Wide><Button variant="contained" size="large" onClick={add} sx={{px:5,width:{xs:'100%',sm:'auto'}}}>{view==='want'?`Add to ${WL[1].toLowerCase()}`:'Add'}</Button></Wide></FormGrid>
    <DataTable rows={pg.slice} minColWidth={cfg.prog?150:110} empty="Nothing here yet. Add your first entry above." actionsWidth={view==='want'?240:96}
     actions={x=><Stack direction="row" spacing={.5} alignItems="center">{view==='want'&&<Button size="small" variant="outlined" onClick={()=>setDn({x,rating:0,episodes:'',note:x.note||''})}>Mark as {WL[2]}</Button>}<IconButton size="small" aria-label="Edit" onClick={()=>setEditRow(x)}><EditRounded fontSize="small"/></IconButton><IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton></Stack>}
     columns={[{label:'Title',render:x=>x.title},{label:'Date',render:x=>fday(x.date)},
