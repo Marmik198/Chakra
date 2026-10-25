@@ -18,7 +18,6 @@ import FormGrid,{Wide,Field} from '@/components/FormGrid';
 import LogFilters,{applyLog,NO_FILTER} from '@/components/LogFilters';
 import {alpha} from '@mui/material/styles';
 import {Dialog,DialogTitle,DialogContent} from '@mui/material';
-import CloseRounded from '@mui/icons-material/CloseRounded';
 import ColorField from '@/components/ColorField';
 const fday=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 import {supabase} from '@/lib/supabase';
