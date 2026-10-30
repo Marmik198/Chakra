@@ -27,7 +27,7 @@ const fday=d=>new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',mon
 export default function Section({section:ps}){
  const params=useParams(),section=ps||params.section,cfg=CFG[section],seeded=useRef({});
  const lab=c=>cfg?.manage?c.name:(cfg?.alias?.[c.name]||c.name);
- const [cols,setCols]=useState([]),[cur,setCur]=useState(0),[allRows,setRows]=useState([]),[view,setView]=useState('done'),[dn,setDn]=useState(null),[f,setF]=useState({title:'',note:'',rating:0,cost:'',episodes:''}),[nc,setNc]=useState(''),[all,setAll]=useState([]),[mg,setMg]=useState(false),[editRow,setEditRow]=useState(null),[ed,setEd]=useState({}),[cfm,setCfm]=useState(null),[cnt,setCnt]=useState({});
+ const [cols,setCols]=useState([]),[cur,setCur]=useState(0),[allRows,setRows]=useState([]),[view,setView]=useState('done'),[dn,setDn]=useState(null),[f,setF]=useState({title:'',note:'',rating:0,cost:'',episodes:'',date:''}),[nc,setNc]=useState(''),[all,setAll]=useState([]),[mg,setMg]=useState(false),[editRow,setEditRow]=useState(null),[ed,setEd]=useState({}),[cfm,setCfm]=useState(null),[cnt,setCnt]=useState({});
  const idx=c=>{const i=cfg.c.indexOf(lab(c));return i<0?99:i};
  const load=useCallback(async()=>{if(!cfg)return;const get=()=>supabase.from('collections').select('*').eq('section',section);let{data}=await get();
   if(cfg.manage){
@@ -48,7 +48,7 @@ export default function Section({section:ps}){
  useEffect(()=>{if(!cfg?.extra||!cols.length||cur!==cols.length)return;supabase.from('collection_entries').select('collection_id,rating,cost,date,episodes,status').in('collection_id',cols.map(c=>c.id)).then(({data})=>setAll(data||[]))},[cur,cols]);
  const pg=usePaged(rows,20,`${col?.id}${view}`);
  if(!cfg)return <Typography>Page not found.</Typography>;
- const add=async()=>{if(!f.title.trim()||!col)return;await supabase.from('collection_entries').insert({collection_id:col.id,date:iso(new Date()),title:f.title.trim(),note:f.note,rating:view==='want'?null:f.rating||null,cost:f.cost===''?null:+f.cost,episodes:isSeries&&view!=='want'?(+f.episodes||0):0,progress:0,status:view==='want'?'want':'done'});setF({title:'',note:'',rating:0,cost:'',episodes:''});loadRows()};
+ const add=async()=>{if(!f.title.trim()||!col)return;await supabase.from('collection_entries').insert({collection_id:col.id,date:(view!=='want'&&f.date)||iso(new Date()),title:f.title.trim(),note:f.note,rating:view==='want'?null:f.rating||null,cost:f.cost===''?null:+f.cost,episodes:isSeries&&view!=='want'?(+f.episodes||0):0,progress:0,status:view==='want'?'want':'done'});setF({title:'',note:'',rating:0,cost:'',episodes:'',date:''});loadRows()};
  const del=x=>undoable('Entry',()=>supabase.from('collection_entries').delete().eq('id',x.id),{id:x.id,hide:()=>setRows(r=>r.filter(y=>y.id!==x.id)),restore:loadRows});
  const setProg=(x,v)=>setRows(r=>r.map(y=>y.id===x.id?{...y,progress:v}:y));
  const saveProg=async(x)=>{await supabase.from('collection_entries').update({progress:x.progress}).eq('id',x.id)};
@@ -65,6 +65,7 @@ export default function Section({section:ps}){
    {WL&&<ToggleButtonGroup exclusive size="small" value={view} onChange={(_,v)=>v&&setView(v)} sx={{mt:1.5}} aria-label="Which list"><ToggleButton value="done">{WL[0]}</ToggleButton><ToggleButton value="want">{WL[1]}</ToggleButton></ToggleButtonGroup>}
    <FormGrid sx={{my:2.5}}>
     <TextField label={isSeries?'Series name':'Title'} value={f.title} onChange={e=>setF({...f,title:e.target.value})} onKeyDown={e=>e.key==='Enter'&&add()}/>
+    {cfg.manage&&view!=='want'&&<TextField label={cfg.wish?`${WL[0]} on`:'Date'} type="date" InputLabelProps={{shrink:true}} inputProps={cfg.wish?{max:iso(new Date())}:undefined} value={f.date||iso(new Date())} onChange={e=>setF({...f,date:e.target.value})}/>}
     {isSeries&&view!=='want'&&<TextField label="Episodes watched" type="number" value={f.episodes} onChange={e=>setF({...f,episodes:e.target.value})}/>}
     {cfg.cost&&<TextField label="Cost (₹)" type="number" value={f.cost} onChange={e=>setF({...f,cost:e.target.value})}/>}
     {cfg.rate&&view!=='want'&&<Field label="Rating" sx={{pt:.5}}><Rating size="large" value={f.rating} onChange={(_,v)=>setF({...f,rating:v||0})}/></Field>}
@@ -72,7 +73,7 @@ export default function Section({section:ps}){
     <Wide><Button variant="contained" size="large" onClick={add} sx={{px:5,width:{xs:'100%',sm:'auto'}}}>{view==='want'?`Add to ${WL[1].toLowerCase()}`:'Add'}</Button></Wide></FormGrid>
    <DataTable rows={pg.slice} minColWidth={cfg.prog?150:110} empty="Nothing here yet. Add your first entry above." actionsWidth={view==='want'?240:96}
     actions={x=><Stack direction="row" spacing={.5} alignItems="center">{view==='want'&&<Button size="small" variant="outlined" onClick={()=>setDn({x,rating:0,episodes:'',note:x.note||''})}>Mark as {WL[2]}</Button>}<IconButton size="small" aria-label="Edit" onClick={()=>setEditRow(x)}><EditRounded fontSize="small"/></IconButton><IconButton size="small" aria-label="Delete" onClick={()=>del(x)}><DeleteRounded fontSize="small"/></IconButton></Stack>}
-    columns={[{label:'Title',render:x=>x.title},{label:'Date',render:x=>fday(x.date)},
+    columns={[{label:'Title',render:x=>x.title},{label:cfg.wish?(view==='want'?'Added on':`${WL[0]} on`):'Date',render:x=>fday(x.date)},
      ...(cfg.rate&&view!=='want'?[{label:'Rating',render:x=>x.rating?<Rating size="small" readOnly value={x.rating}/>:'–'}]:[]),
      ...(isSeries&&view!=='want'?[{label:'Episodes',align:'right',render:x=>x.episodes?String(x.episodes):'–'}]:[]),
      ...(cfg.cost?[{label:'Cost',align:'right',render:x=>x.cost?`₹${Math.round(x.cost).toLocaleString('en-IN')}`:'–'}]:[]),
@@ -86,8 +87,9 @@ export default function Section({section:ps}){
  <Dialog open={!!dn} onClose={()=>setDn(null)} fullWidth maxWidth="xs"><DialogTitle>Mark as {WL?.[2]}{dn?` · ${dn.x.title}`:''}</DialogTitle>
    <DialogContent><Stack spacing={2} sx={{pt:1}}>{cfg.rate&&<Box><Typography variant="caption" color="text.secondary">Your rating</Typography><br/><Rating value={dn?.rating||0} onChange={(_,v)=>setDn({...dn,rating:v||0})}/></Box>}
     {isSeries&&<TextField label="Episodes watched" type="number" value={dn?.episodes??''} onChange={e=>setDn({...dn,episodes:e.target.value})}/>}
+    <TextField label={`${WL?.[0]} on`} type="date" InputLabelProps={{shrink:true}} inputProps={{max:iso(new Date())}} value={dn?.date||iso(new Date())} onChange={e=>setDn({...dn,date:e.target.value})}/>
     <TextField label="Note" value={dn?.note||''} onChange={e=>setDn({...dn,note:e.target.value})} multiline minRows={2}/></Stack></DialogContent>
-   <DialogActions><Button onClick={()=>setDn(null)}>Cancel</Button><Button variant="contained" onClick={async()=>{await supabase.from('collection_entries').update({status:'done',date:iso(new Date()),rating:dn.rating||null,episodes:isSeries?(+dn.episodes||0):dn.x.episodes,note:dn.note}).eq('id',dn.x.id);setDn(null);loadRows()}}>Move to {WL?.[0].toLowerCase()}</Button></DialogActions></Dialog>
+   <DialogActions><Button onClick={()=>setDn(null)}>Cancel</Button><Button variant="contained" onClick={async()=>{await supabase.from('collection_entries').update({status:'done',date:dn.date||iso(new Date()),rating:dn.rating||null,episodes:isSeries?(+dn.episodes||0):dn.x.episodes,note:dn.note}).eq('id',dn.x.id);setDn(null);loadRows()}}>Move to {WL?.[0].toLowerCase()}</Button></DialogActions></Dialog>
  <Dialog open={mg} onClose={()=>{setMg(false);setCfm(null)}} fullWidth maxWidth="sm"><DialogTitle>Manage lists</DialogTitle>
    <DialogContent><Stack spacing={1.5} sx={{pt:1}}>
     {cols.map((c,i)=>cfm===c.id
@@ -99,7 +101,7 @@ export default function Section({section:ps}){
     <Box sx={{pt:1.5,borderTop:1,borderColor:'divider'}}><Typography variant="subtitle2" sx={{mb:1}}>Add a new list</Typography><Stack direction="row" spacing={1}><TextField fullWidth label={section==='outings'?'List name, e.g. Weekend trips':'List name, e.g. Podcasts'} value={nc} onChange={e=>setNc(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addCol()}/><Button variant="contained" onClick={addCol}>Add</Button></Stack></Box></Stack></DialogContent>
    <DialogActions><Button onClick={()=>{setMg(false);setCfm(null)}}>Done</Button></DialogActions></Dialog>
   <EditDialog open={!!editRow} title={`Edit ${cfg.t==='Journal'?'entry':'item'}`} initial={editRow&&{title:editRow.title,date:editRow.date,collection_id:editRow.collection_id,status:editRow.status||'done',rating:editRow.rating||0,episodes:editRow.episodes||0,cost:editRow.cost??'',progress:editRow.progress||0,note:editRow.note||''}}
-   fields={[{key:'title',label:'Title',required:true,span:true},{key:'date',label:'Date',type:'date'},
+   fields={[{key:'title',label:'Title',required:true,span:true},{key:'date',label:'Date',type:'date',helper:cfg.wish?'When you watched, read or did it (or when you added it, for the list).':undefined},
     ...(cols.length>1?[{key:'collection_id',label:'List',type:'select',options:cols.map(c=>[c.id,lab(c)])}]:[]),
     ...(cfg.wish?[{key:'status',label:'Status',type:'select',options:[['done',WL?.[0]||'Done'],['want',WL?.[1]||'Want to do']]}]:[]),
     ...(cfg.rate?[{key:'rating',label:'Rating',type:'rating',show:v=>v.status!=='want'}]:[]),
